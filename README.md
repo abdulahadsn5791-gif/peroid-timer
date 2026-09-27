@@ -168,4 +168,4 @@ design changes without a build.
 
 ## License
 
-See `LICENSE`.
+MIT © 2026 abdulahadsn5791-gif. See `LICENSE` for the full text.
