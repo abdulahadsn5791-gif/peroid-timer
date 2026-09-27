@@ -1,0 +1,156 @@
+name: Release
+
+# Tag a commit to publish an APK. The tag is the single source of truth for the
+# version: v1.2.3 becomes versionName 1.2.3 and versionCode 10203, so a rebuild
+# of the same tag is reproducible and a later tag can always upgrade over it.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  PERIOD_TIMER_RELEASE: "1"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Tag must look like v1.2.3, got '$TAG'"
+            exit 1
+          fi
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          echo "tag=$TAG"                      >> "$GITHUB_OUTPUT"
+          echo "name=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+          echo "code=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          # SDK 57 minimum is Node 22.13.x.
+          node-version: "22.13.x"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check tag matches app.json
+        run: |
+          WANT="${{ steps.tag.outputs.name }}"
+          HAVE=$(node -p "require('./app.json').expo.version")
+          if [ "$WANT" != "$HAVE" ]; then
+            echo "::error::Tag $WANT does not match expo.version $HAVE in app.json. Bump app.json first."
+            exit 1
+          fi
+
+      - name: Exclude the Expo dev client from autolinking
+        run: bun scripts/release-mode.mjs
+
+      - name: Restore the signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret ANDROID_KEYSTORE_BASE64 is not set on this repo."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/keystore/release.jks"
+          echo "PERIOD_TIMER_KEYSTORE=$RUNNER_TEMP/keystore/release.jks" >> "$GITHUB_ENV"
+          echo "Keystore restored."
+
+      - name: Generate the native project
+        run: bunx expo prebuild --no-install
+        env:
+          PERIOD_TIMER_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          PERIOD_TIMER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          PERIOD_TIMER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PERIOD_TIMER_VERSION_CODE: ${{ steps.tag.outputs.code }}
+          PERIOD_TIMER_VERSION_NAME: ${{ steps.tag.outputs.name }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble the release APK
+        working-directory: android
+        env:
+          PERIOD_TIMER_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          PERIOD_TIMER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          PERIOD_TIMER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Collect the APK
+        id: apk
+        run: |
+          set -euo pipefail
+          SRC=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$SRC" ]; then
+            echo "::error::No APK produced by assembleRelease."
+            exit 1
+          fi
+          mkdir -p dist
+          # A fixed name keeps the /releases/latest/download/ link stable forever.
+          cp "$SRC" dist/period-timer.apk
+          cd dist
+          sha256sum period-timer.apk > SHA256SUMS
+          cat SHA256SUMS
+          echo "size=$(stat -c%s period-timer.apk)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          NAME: ${{ steps.tag.outputs.name }}
+          CODE: ${{ steps.tag.outputs.code }}
+          SIZE_MB: ${{ steps.apk.outputs.size }}
+        run: |
+          set -euo pipefail
+          NOTES=$(cat <<EOF
+          Period Timer $NAME (versionCode $CODE)
+
+          - Download \`period-timer.apk\` (all ABIs: arm64-v8a, armeabi-v7a, x86, x86_64)
+          - Verify with \`SHA256SUMS\`
+          - Android Studio emulators are supported (x86 / x86_64 included)
+
+          Installing a sideloaded build: Android asks you to allow
+          "Install unknown apps" for the browser you downloaded from, once.
+          The app also needs exact-alarm and notification permission for the
+          live countdown to survive the screen turning off.
+          EOF
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; replacing its assets."
+            gh release upload "$TAG" dist/period-timer.apk dist/SHA256SUMS --clobber
+            gh release edit "$TAG" --title "Period Timer $NAME" --notes "$NOTES"
+          else
+            gh release create "$TAG" \
+              dist/period-timer.apk dist/SHA256SUMS \
+              --title "Period Timer $NAME" \
+              --notes "$NOTES" \
+              --latest
+          fi
+          echo "https://github.com/${{ github.repository }}/releases/latest/download/period-timer.apk"

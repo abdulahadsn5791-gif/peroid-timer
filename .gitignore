@@ -2,21 +2,39 @@
 
 # dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# testing
+coverage/
+*.lcov
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
-
-# Native
-.kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.keystore
+*.der
+*.pem
+*.cer
+*.p7b
+
+# EAS / native build output
+*.apk
+*.aab
+*.ipa
+*.app
+*.xcarchive
+*.dSYM.zip
+*.hprof
 
 # Metro
 .metro-health-check*
@@ -25,17 +43,43 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.log
+lerna-debug.log
+*.log
+
+# testing / runtime caches
+*.pidb
+*.bin
+.watchmanconfig
 
 # macOS
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# editors
+.idea/
+*.iml
+*.swp
+*.swo
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (source lives in native/android)
 /ios
 /android

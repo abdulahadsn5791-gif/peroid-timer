@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F3F4F6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Timer">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <meta name="color-scheme" content="light">
+  <title>Class Schedule — Period Timer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F3F4F6',
+            surface: { 1: '#F9FAFB', 2: '#FFFFFF', 3: '#FFFFFF', 4: '#FFFFFF' },
+            accent: 'rgb(var(--accent-rgb) / <alpha-value>)',
+            success: '#15803D',
+            warning: '#B45309',
+            danger: '#DC2626',
+          },
+          borderRadius: { sm: '8px', DEFAULT: '14px', lg: '20px', xl: '28px' },
+          fontFamily: {
+            sans: ['-apple-system', 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            sm: '0 1px 2px rgba(16,24,40,0.06)',
+            DEFAULT: '0 4px 12px rgba(16,24,40,0.08)',
+            lg: '0 12px 28px rgba(16,24,40,0.14)',
+          },
+          transitionTimingFunction: { spring: 'cubic-bezier(0.32, 0.72, 0, 1)' },
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --accent-rgb: 37 99 235;
+    }
+
+    html,
+    body {
+      background-color: #F3F4F6;
+    }
+
+    @keyframes sheet-in {
+      from {
+        transform: translateY(24px);
+        opacity: 0
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1
+      }
+    }
+
+    @keyframes fade-in {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    @keyframes timer-flash {
+
+      0%,
+      100% {
+        background-color: transparent;
+      }
+
+      50% {
+        background-color: rgba(220, 38, 38, 0.12);
+      }
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.35;
+      }
+    }
+
+    .sheet-enter {
+      animation: sheet-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .scrim-enter {
+      animation: fade-in 200ms ease-out;
+    }
+
+    .timer-flash {
+      animation: timer-flash 0.6s ease-in-out 3;
+    }
+
+    .pulse-dot {
+      animation: pulse-dot 1.6s ease-in-out infinite;
+    }
+
+    #wallpaperLayer {
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: opacity 0.4s ease;
+    }
+
+    #wallpaperScrim {
+      background: transparent;
+      transition: background 0.4s ease;
+    }
+
+    body.has-wallpaper #wallpaperScrim {
+      background: rgba(0, 0, 0, 0.28);
+    }
+
+    #heroTime,
+    #heroPeriodName,
+    #heroStatus {
+      transition: color 0.3s ease, text-shadow 0.3s ease;
+    }
+
+    body:not(.has-wallpaper) .adaptive-primary {
+      color: rgba(0, 0, 0, 0.92);
+      text-shadow: none;
+    }
+
+    body.has-wallpaper .adaptive-primary {
+      color: rgba(255, 255, 255, 0.97);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    body:not(.has-wallpaper) .adaptive-secondary {
+      color: rgba(0, 0, 0, 0.5);
+      text-shadow: none;
+    }
+
+    body.has-wallpaper .adaptive-secondary {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    body:not(.has-wallpaper) .adaptive-ring-outline {
+      border-color: rgba(0, 0, 0, 0.15);
+    }
+
+    body.has-wallpaper .adaptive-ring-outline {
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .frosted-panel {
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      transition: background 0.4s ease, border-color 0.4s ease;
+    }
+
+    body.has-wallpaper .frosted-panel {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    body:not(.has-wallpaper) .ring-ticks {
+      stroke: rgba(0, 0, 0, 0.14);
+    }
+
+    body.has-wallpaper .ring-ticks {
+      stroke: rgba(255, 255, 255, 0.4);
+    }
+
+    .ring-track,
+    .ring-progress {
+      transition: stroke 0.3s ease, stroke-dashoffset 1s linear;
+    }
+
+    body:not(.has-wallpaper) .ring-track {
+      stroke: rgba(0, 0, 0, 0.08);
+    }
+
+    body:not(.has-wallpaper) .ring-progress {
+      stroke: rgb(var(--accent-rgb));
+    }
+
+    body.has-wallpaper .ring-track {
+      stroke: rgba(255, 255, 255, 0.28);
+    }
+
+    body.has-wallpaper .ring-progress {
+      stroke: rgba(255, 255, 255, 0.95);
+    }
+
+    .frosted-btn {
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.75);
+      transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.2s ease;
+    }
+
+    .frosted-btn:hover {
+      box-shadow: 0 4px 14px rgba(16, 24, 40, 0.12);
+    }
+
+    body.has-wallpaper .frosted-btn {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: rgba(255, 255, 255, 0.96);
+    }
+  </style>
+</head>
+
+<body class="bg-canvas font-sans antialiased">
+
+  <div id="wallpaperLayer" class="fixed inset-0 z-0"></div>
+  <div id="wallpaperScrim" class="fixed inset-0 z-0"></div>
+
+  <div class="relative z-10 min-h-[100dvh] flex flex-col">
+
+    <header class="flex items-center justify-between px-5 pb-3 shrink-0"
+      style="padding-top:max(1.25rem, env(safe-area-inset-top))">
+      <div>
+        <h1 class="adaptive-primary text-2xl font-bold tracking-tight leading-tight">Today</h1>
+        <p id="todayLabel" class="adaptive-secondary text-sm"></p>
+      </div>
+      <button id="openSettingsBtn" aria-label="Settings"
+        class="frosted-btn h-11 w-11 flex items-center justify-center rounded-full">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <circle cx="14" cy="6" r="2" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <circle cx="8" cy="12" r="2" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+          <circle cx="16" cy="18" r="2" />
+        </svg>
+      </button>
+    </header>
+
+
+    <section id="heroSection" class="flex items-center justify-center px-4" style="min-height:calc(100dvh - 190px)">
+      <div id="ringWrap" class="relative"
+        style="width:min(88vw,52dvh,480px);aspect-ratio:1;container-type:inline-size;will-change:transform,opacity">
+        <div class="frosted-panel absolute rounded-full shadow" style="inset:4%"></div>
+        <svg viewBox="0 0 200 200" class="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
+          <circle cx="100" cy="100" r="79" fill="none" stroke-width="3.5" class="ring-ticks"
+            stroke-dasharray="1.2 7.177" />
+          <circle cx="100" cy="100" r="92" fill="none" stroke-width="9" class="ring-track" />
+          <circle id="ringProgress" cx="100" cy="100" r="92" fill="none" stroke-width="9" stroke-linecap="round"
+            class="ring-progress" stroke-dasharray="578.05" stroke-dashoffset="0" />
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center" style="padding:0 14%">
+          <div id="heroPeriodName" class="adaptive-secondary font-medium truncate max-w-full" style="font-size:7.5cqw">—
+          </div>
+          <div id="heroTime" class="adaptive-primary font-thin tabular-nums tracking-tight leading-none"
+            style="font-size:23cqw;margin:2cqw 0">--:--</div>
+          <div id="heroStatus" class="adaptive-secondary" style="font-size:5.5cqw">—</div>
+        </div>
+      </div>
+    </section>
+
+    <main class="px-4 sm:px-6 w-full max-w-md mx-auto" style="padding-bottom:max(2rem, env(safe-area-inset-bottom))">
+      <div class="frosted-panel rounded-xl p-2 shadow-sm">
+        <div id="periodsList" class="space-y-0.5"></div>
+      </div>
+    </main>
+
+  </div>
+
+  <div id="sheetOverlay" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/30 scrim-enter" onclick="closeSettings()"></div>
+    <div
+      class="sheet-enter absolute bottom-0 inset-x-0 md:inset-x-auto md:right-6 md:top-1/2 md:-translate-y-1/2 md:bottom-auto md:w-[460px] bg-surface-4 rounded-t-xl md:rounded-xl shadow-lg p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+      <div class="h-1 w-10 bg-black/10 rounded-full mx-auto md:hidden"></div>
+      <h3 class="text-xl font-semibold text-black">Schedule settings</h3>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-black/60">Wallpaper</label>
+        <div id="wallpaperPreviewWrap"
+          class="hidden rounded-lg overflow-hidden border border-black/10 h-28 bg-surface-1">
+          <img id="wallpaperPreview" class="w-full h-full object-cover" alt="Wallpaper preview">
+        </div>
+        <div class="flex gap-2">
+          <label
+            class="flex-1 px-4 py-2.5 rounded bg-surface-1 border border-black/10 text-sm font-medium text-black text-center cursor-pointer hover:bg-surface-2 transition-colors duration-200">
+            Choose photo
+            <input id="wallpaperInput" type="file" accept="image/*" class="hidden">
+          </label>
+          <button type="button" id="removeWallpaperBtn"
+            class="px-4 py-2.5 rounded bg-surface-1 border border-black/10 text-sm font-medium text-danger hover:bg-danger/10 transition-colors duration-200">Remove</button>
+        </div>
+        <p class="text-xs text-black/40">Stored only on this device. Text switches to white automatically once a photo
+          is set.</p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-black/60">Accent color</label>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div id="colorSwatches" class="flex flex-wrap gap-2.5"></div>
+          <label
+            class="relative h-9 w-9 rounded-full border border-black/10 bg-surface-1 flex items-center justify-center cursor-pointer text-black/60"
+            title="Custom color" aria-label="Custom color">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <input id="customColor" type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+          </label>
+        </div>
+        <p class="text-xs text-black/40">Changes buttons, switches and the current period.</p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-black/60">Ring colors</label>
+        <div id="paletteList" class="grid grid-cols-2 gap-2"></div>
+        <p class="text-xs text-black/40">The ring starts with the first color and shifts as the period runs out.</p>
+      </div>
+
+      <div class="flex items-center justify-between gap-4">
+        <label class="text-sm font-medium text-black" for="colorClockInput">Also color the clock numbers</label>
+        <label class="inline-flex items-center cursor-pointer shrink-0">
+          <input id="colorClockInput" type="checkbox" class="sr-only peer">
+          <div
+            class="w-11 h-6 bg-black/10 peer-checked:bg-accent rounded-full transition-all duration-200 ease-spring relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all after:duration-200 after:ease-spring peer-checked:after:translate-x-5">
+          </div>
+        </label>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-black/60">Class periods — set each one's real start and end time</label>
+        <div id="periodsEditor" class="space-y-2"></div>
+        <button type="button" id="addPeriodBtn"
+          class="w-full px-4 py-2.5 rounded bg-surface-1 border border-dashed border-black/15 text-sm font-medium text-black/60 hover:bg-surface-2 hover:text-black transition-colors duration-200">+
+          Add period</button>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-medium text-black" for="soundInput">Sound when a period ends</label>
+        <label class="inline-flex items-center cursor-pointer">
+          <input id="soundInput" type="checkbox" class="sr-only peer">
+          <div
+            class="w-11 h-6 bg-black/10 peer-checked:bg-accent rounded-full transition-all duration-200 ease-spring relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all after:duration-200 after:ease-spring peer-checked:after:translate-x-5">
+          </div>
+        </label>
+      </div>
+
+      <div id="installRow" class="hidden rounded bg-surface-1 border border-black/10 p-3 space-y-2">
+        <p class="text-sm font-medium text-black">Install on your phone</p>
+        <p id="installHint" class="text-xs text-black/50"></p>
+        <button type="button" id="installBtn"
+          class="hidden w-full px-4 py-2.5 rounded bg-surface-2 border border-black/10 text-sm font-medium text-black">Add
+          to home screen</button>
+      </div>
+
+      <button type="button" id="saveSettingsBtn"
+        class="w-full px-5 py-3 rounded-lg bg-accent text-white font-medium shadow-sm hover:shadow transition-all duration-200 ease-spring">Save
+        &amp; apply</button>
+    </div>
+  </div>
+
+  <script>
+      (function () {
+        var STORAGE_KEY = 'classScheduleState';
+        var WALLPAPER_KEY = 'classScheduleWallpaper';
+        var COLORS = { accent: '#2563EB', warning: '#B45309', danger: '#DC2626' };
+        // Each palette: [plenty of time, running low, almost done]
+        var PALETTES = [
+          { name: 'Classic', colors: ['#2563EB', '#B45309', '#DC2626'] },
+          { name: 'Signal', colors: ['#16A34A', '#F59E0B', '#DC2626'] },
+          { name: 'Twilight', colors: ['#0EA5E9', '#8B5CF6', '#EC4899'] },
+          { name: 'Lagoon', colors: ['#14B8A6', '#F97316', '#E11D48'] }
+        ];
+        var previewPalette = null;
+
+        var state = {
+          periods: [
+            { id: 'p1', name: 'Period 1', start: '08:30', end: '09:10' },
+            { id: 'p2', name: 'Period 2', start: '09:15', end: '09:55' },
+            { id: 'p3', name: 'Period 3', start: '10:00', end: '10:40' },
+            { id: 'p4', name: 'Period 4', start: '10:45', end: '11:25' }
+          ],
+          accentColor: '#2563EB',
+          colorClock: false,
+          palette: 0,
+          soundEnabled: true,
+          wallpaperDataUrl: null,
+          lastNotifiedPeriodId: null
+        };
+
+        var tickInterval = null;
+        var lastCurrentIdx; // intentionally undefined so the first tick always renders
+        var tempPeriods = [];
+        var tempWallpaperDataUrl = null;
+
+        function escapeHtml(str) {
+          var div = document.createElement('div');
+          div.textContent = String(str == null ? '' : str);
+          return div.innerHTML;
+        }
+
+        function timeStringToSeconds(t) {
+          var parts = String(t || '00:00').split(':');
+          return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60;
+        }
+
+        function addMinutesToTimeString(timeStr, minutesToAdd) {
+          var totalMin = Math.round(timeStringToSeconds(timeStr) / 60) + minutesToAdd;
+          totalMin = ((totalMin % 1440) + 1440) % 1440;
+          var hh = Math.floor(totalMin / 60);
+          var mm = totalMin % 60;
+          return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+        }
+
+        function formatTimeLabel(t) {
+          var parts = String(t || '00:00').split(':');
+          var h = parseInt(parts[0], 10) || 0;
+          var m = parts[1] || '00';
+          var ampm = h >= 12 ? 'PM' : 'AM';
+          var h12 = h % 12; if (h12 === 0) h12 = 12;
+          return h12 + ':' + m + ' ' + ampm;
+        }
+
+        function rangeLabel(p) {
+          var a = formatTimeLabel(p.start), b = formatTimeLabel(p.end);
+          if (a.slice(-2) === b.slice(-2)) a = a.slice(0, -3);
+          return a + ' – ' + b;
+        }
+
+        function formatDuration(totalSeconds) {
+          totalSeconds = Math.max(0, Math.round(totalSeconds));
+          var h = Math.floor(totalSeconds / 3600);
+          var m = Math.floor((totalSeconds % 3600) / 60);
+          var s = totalSeconds % 60;
+          if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+          return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        function loadState() {
+          try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              var saved = JSON.parse(raw);
+              for (var k in saved) { state[k] = saved[k]; }
+              if (!Array.isArray(state.periods) || state.periods.length === 0) {
+                state.periods = [{ id: 'p1', name: 'Period 1', start: '08:30', end: '09:10' }];
+              }
+            }
+          } catch (e) { console.error('Could not load saved schedule', e); }
+          try { state.wallpaperDataUrl = localStorage.getItem(WALLPAPER_KEY); }
+          catch (e) { state.wallpaperDataUrl = null; }
+        }
+
+        function saveState() {
+          try {
+            var toSave = {};
+            for (var k in state) { if (k !== 'wallpaperDataUrl') toSave[k] = state[k]; }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+          } catch (e) { console.error('Could not save schedule', e); }
+        }
+
+        function saveWallpaper(dataUrl) {
+          try {
+            if (dataUrl) localStorage.setItem(WALLPAPER_KEY, dataUrl);
+            else localStorage.removeItem(WALLPAPER_KEY);
+          } catch (e) { console.error('Could not save wallpaper (it may be too large for local storage)', e); }
+        }
+
+        function applyWallpaper() {
+          var layer = document.getElementById('wallpaperLayer');
+          if (state.wallpaperDataUrl) {
+            layer.style.backgroundImage = 'url("' + state.wallpaperDataUrl + '")';
+            document.body.classList.add('has-wallpaper');
+          } else {
+            layer.style.backgroundImage = 'none';
+            document.body.classList.remove('has-wallpaper');
+          }
+        }
+
+        function playAlertSound() {
+          try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var beep = function (freq, start, dur) {
+              var osc = ctx.createOscillator();
+              var gain = ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.value = freq;
+              gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+              gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + start + 0.02);
+              gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
+              osc.connect(gain).connect(ctx.destination);
+              osc.start(ctx.currentTime + start);
+              osc.stop(ctx.currentTime + start + dur + 0.05);
+            };
+            beep(880, 0, 0.18);
+            beep(880, 0.25, 0.18);
+            beep(880, 0.5, 0.3);
+          } catch (e) { console.error('Could not play alert sound', e); }
+        }
+
+        // --- Core schedule computation, driven entirely by the real clock ---
+
+        function computeStatus(nowSeconds) {
+          var periods = state.periods;
+          var currentIdx = -1;
+          for (var i = 0; i < periods.length; i++) {
+            var s = timeStringToSeconds(periods[i].start);
+            var e = timeStringToSeconds(periods[i].end);
+            if (nowSeconds >= s && nowSeconds < e) { currentIdx = i; break; }
+          }
+          var nextIdx = -1;
+          if (currentIdx === -1) {
+            for (var j = 0; j < periods.length; j++) {
+              if (timeStringToSeconds(periods[j].start) > nowSeconds) { nextIdx = j; break; }
+            }
+          }
+          return { currentIdx: currentIdx, nextIdx: nextIdx };
+        }
+
+        function checkPeriodEndNotification(nowSeconds) {
+          for (var i = 0; i < state.periods.length; i++) {
+            var p = state.periods[i];
+            var e = timeStringToSeconds(p.end);
+            if (nowSeconds >= e && nowSeconds < e + 2 && state.lastNotifiedPeriodId !== p.id) {
+              state.lastNotifiedPeriodId = p.id;
+              saveState();
+              if (state.soundEnabled) playAlertSound();
+              document.body.classList.add('timer-flash');
+              setTimeout(function () { document.body.classList.remove('timer-flash'); }, 1900);
+            }
+          }
+        }
+
+        function palette() {
+          var i = previewPalette !== null ? previewPalette : (state.palette || 0);
+          return (PALETTES[i] || PALETTES[0]).colors;
+        }
+        function phaseIdx(pct) { return pct <= 0.15 ? 2 : (pct <= 0.3 ? 1 : 0); }
+        function clockColor() { return state.colorClock ? palette()[0] : ''; }
+        var RING_C = 578.05;
+        function setRing(pct, color) {
+          var ring = document.getElementById('ringProgress');
+          pct = Math.max(0, Math.min(1, pct));
+          ring.style.strokeDashoffset = String(RING_C * (1 - pct));
+          ring.style.stroke = color || '';
+        }
+
+        function updateHeroDisplay(nowSeconds, computed) {
+          var heroTime = document.getElementById('heroTime');
+          var heroName = document.getElementById('heroPeriodName');
+          var heroStatus = document.getElementById('heroStatus');
+
+          if (computed.currentIdx !== -1) {
+            var p = state.periods[computed.currentIdx];
+            var s = timeStringToSeconds(p.start);
+            var e = timeStringToSeconds(p.end);
+            var remaining = Math.max(0, e - nowSeconds);
+            var total = Math.max(1, e - s);
+            var pct = remaining / total;
+
+            var ph = phaseIdx(pct);
+            var phaseColor = palette()[ph];
+            var overrideColor = ph > 0 ? phaseColor : '';
+
+            heroTime.textContent = formatDuration(remaining);
+            heroTime.style.color = state.colorClock ? phaseColor : overrideColor;
+            setRing(pct, phaseColor);
+            heroName.textContent = p.name;
+            heroStatus.textContent = 'Ends at ' + formatTimeLabel(p.end);
+
+            var rowBar = document.getElementById('currentRowBar');
+            if (rowBar) { rowBar.style.width = ((1 - pct) * 100).toFixed(1) + '%'; rowBar.style.backgroundColor = phaseColor; }
+            var rowTime = document.getElementById('currentRowTime');
+            if (rowTime) {
+              rowTime.textContent = formatDuration(remaining);
+              rowTime.style.color = overrideColor || state.accentColor || COLORS.accent;
+            }
+
+          } else if (computed.nextIdx !== -1) {
+            var np = state.periods[computed.nextIdx];
+            var untilStart = Math.max(0, timeStringToSeconds(np.start) - nowSeconds);
+            heroTime.textContent = formatDuration(untilStart);
+            heroTime.style.color = clockColor();
+            var prevEnd = computed.nextIdx > 0 ? timeStringToSeconds(state.periods[computed.nextIdx - 1].end) : timeStringToSeconds(np.start) - 1800;
+            setRing(untilStart / Math.max(60, timeStringToSeconds(np.start) - prevEnd), palette()[0]);
+            heroName.textContent = 'Up next: ' + np.name;
+            heroStatus.textContent = 'Starts at ' + formatTimeLabel(np.start);
+
+          } else {
+            heroTime.textContent = '--:--';
+            heroTime.style.color = '';
+            setRing(0, '');
+            heroName.textContent = state.periods.length ? 'All periods complete' : 'No periods set up';
+            heroStatus.textContent = state.periods.length ? 'See you tomorrow' : 'Add one in settings';
+          }
+        }
+
+        function renderScheduleList(nowSeconds) {
+          var container = document.getElementById('periodsList');
+          container.innerHTML = '';
+
+          state.periods.forEach(function (p) {
+            var s = timeStringToSeconds(p.start);
+            var e = timeStringToSeconds(p.end);
+            var status = nowSeconds >= e ? 'passed' : (nowSeconds >= s && nowSeconds < e ? 'current' : 'upcoming');
+            var card = document.createElement('div');
+
+            if (status === 'passed') {
+              card.className = 'flex items-center gap-3 px-3.5 py-3 rounded-lg';
+              card.innerHTML =
+                '<div class="h-6 w-6 rounded-full bg-success flex items-center justify-center shrink-0">' +
+                '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' +
+                '</div>' +
+                '<p class="adaptive-secondary text-base flex-1 min-w-0 truncate line-through">' + escapeHtml(p.name) + '</p>' +
+                '<p class="adaptive-secondary text-xs shrink-0">Done</p>';
+
+            } else if (status === 'current') {
+              card.className = 'px-3.5 py-3 rounded-lg bg-accent/10';
+              card.innerHTML =
+                '<div class="flex items-center gap-3">' +
+                '<span class="h-2.5 w-2.5 rounded-full bg-accent pulse-dot shrink-0"></span>' +
+                '<div class="flex-1 min-w-0"><p class="adaptive-primary text-base font-semibold truncate">' + escapeHtml(p.name) + '</p>' +
+                '<p class="adaptive-secondary text-xs">' + rangeLabel(p) + '</p></div>' +
+                '<p id="currentRowTime" class="text-base font-bold tabular-nums shrink-0">00:00</p>' +
+                '</div>' +
+                '<div class="mt-2.5 h-1.5 rounded-full bg-black/10 overflow-hidden"><div id="currentRowBar" class="h-full rounded-full bg-accent" style="width:0%;transition:width 1s linear, background-color .3s"></div></div>';
+
+            } else {
+              card.className = 'flex items-center gap-3 px-3.5 py-3 rounded-lg';
+              card.innerHTML =
+                '<div class="h-6 w-6 rounded-full border-2 adaptive-ring-outline shrink-0"></div>' +
+                '<p class="adaptive-primary text-base flex-1 min-w-0 truncate">' + escapeHtml(p.name) + '</p>' +
+                '<p class="adaptive-secondary text-xs shrink-0">' + rangeLabel(p) + '</p>';
+            }
+
+            container.appendChild(card);
+          });
+        }
+
+        function tick() {
+          var now = new Date();
+          var nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+          checkPeriodEndNotification(nowSeconds);
+          var computed = computeStatus(nowSeconds);
+
+          if (computed.currentIdx !== lastCurrentIdx) {
+            lastCurrentIdx = computed.currentIdx;
+            renderScheduleList(nowSeconds);
+          }
+
+          updateHeroDisplay(nowSeconds, computed);
+          var big = document.getElementById('heroTime');
+          big.style.fontSize = big.textContent.length > 5 ? '16cqw' : '23cqw';
+          document.getElementById('todayLabel').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+        }
+
+        // --- Settings: periods editor ---
+
+        function syncEditorToTemp() {
+          var rows = document.querySelectorAll('#periodsEditor > div');
+          rows.forEach(function (row, i) {
+            var nameInput = row.querySelector('.period-name-input');
+            var startInput = row.querySelector('.period-start-input');
+            var endInput = row.querySelector('.period-end-input');
+            if (!tempPeriods[i]) return;
+            tempPeriods[i].name = nameInput.value.trim() || ('Period ' + (i + 1));
+            tempPeriods[i].start = startInput.value || tempPeriods[i].start;
+            tempPeriods[i].end = endInput.value || tempPeriods[i].end;
+          });
+        }
+
+        function renderPeriodsEditor() {
+          var container = document.getElementById('periodsEditor');
+          container.innerHTML = '';
+          tempPeriods.forEach(function (p, i) {
+            var row = document.createElement('div');
+            row.className = 'bg-surface-1 rounded p-2.5 border border-black/10 space-y-2';
+            row.innerHTML =
+              '<div class="flex items-center gap-1.5">' +
+              '<input type="text" class="period-name-input flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm text-black focus:outline-none focus:ring-2 focus:ring-accent/30" value="' + escapeHtml(p.name) + '">' +
+              '<button type="button" class="move-up-btn h-7 w-7 flex items-center justify-center rounded-sm hover:bg-surface-2 text-black/40 shrink-0" aria-label="Move up"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></button>' +
+              '<button type="button" class="move-down-btn h-7 w-7 flex items-center justify-center rounded-sm hover:bg-surface-2 text-black/40 shrink-0" aria-label="Move down"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>' +
+              '<button type="button" class="remove-period-btn h-7 w-7 flex items-center justify-center rounded-sm hover:bg-danger/10 text-danger shrink-0" aria-label="Remove period"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>' +
+              '</div>' +
+              '<div class="flex items-center gap-2">' +
+              '<input type="time" class="period-start-input flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm text-black focus:outline-none focus:ring-2 focus:ring-accent/30" value="' + p.start + '">' +
+              '<span class="text-black/30 text-xs shrink-0">to</span>' +
+              '<input type="time" class="period-end-input flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm text-black focus:outline-none focus:ring-2 focus:ring-accent/30" value="' + p.end + '">' +
+              '</div>';
+            container.appendChild(row);
+
+            row.querySelector('.move-up-btn').addEventListener('click', function () {
+              syncEditorToTemp();
+              if (i > 0) { var tmp = tempPeriods[i]; tempPeriods[i] = tempPeriods[i - 1]; tempPeriods[i - 1] = tmp; renderPeriodsEditor(); }
+            });
+            row.querySelector('.move-down-btn').addEventListener('click', function () {
+              syncEditorToTemp();
+              if (i < tempPeriods.length - 1) { var tmp = tempPeriods[i]; tempPeriods[i] = tempPeriods[i + 1]; tempPeriods[i + 1] = tmp; renderPeriodsEditor(); }
+            });
+            row.querySelector('.remove-period-btn').addEventListener('click', function () {
+              syncEditorToTemp();
+              if (tempPeriods.length > 1) { tempPeriods.splice(i, 1); renderPeriodsEditor(); }
+            });
+          });
+        }
+
+        function showWallpaperPreview(url) {
+          var wrap = document.getElementById('wallpaperPreviewWrap');
+          var img = document.getElementById('wallpaperPreview');
+          img.src = url;
+          wrap.classList.remove('hidden');
+        }
+        function hideWallpaperPreview() {
+          document.getElementById('wallpaperPreviewWrap').classList.add('hidden');
+          document.getElementById('wallpaperPreview').src = '';
+        }
+
+        var PRESETS = ['#2563EB', '#0EA5E9', '#15803D', '#F97316', '#DC2626', '#EC4899', '#8B5CF6', '#111827'];
+        var tempAccent = '#2563EB';
+        function applyAccent(hex) {
+          var m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+          if (!m) return;
+          var n = parseInt(m[1], 16);
+          document.documentElement.style.setProperty('--accent-rgb', (n >> 16 & 255) + ' ' + (n >> 8 & 255) + ' ' + (n & 255));
+        }
+        function renderSwatches() {
+          var box = document.getElementById('colorSwatches');
+          box.innerHTML = '';
+          PRESETS.forEach(function (c) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('aria-label', 'Accent ' + c);
+            var on = c.toLowerCase() === tempAccent.toLowerCase();
+            b.className = 'h-9 w-9 rounded-full transition-all duration-200 ease-spring ' + (on ? 'ring-2 ring-offset-2 ring-black/70' : 'ring-1 ring-black/10');
+            b.style.backgroundColor = c;
+            b.addEventListener('click', function () { tempAccent = c; applyAccent(c); renderSwatches(); });
+            box.appendChild(b);
+          });
+        }
+        document.getElementById('customColor').addEventListener('input', function (e) {
+          tempAccent = e.target.value; applyAccent(tempAccent); renderSwatches();
+        });
+
+        var tempPalette = 0;
+        function renderPalettes() {
+          var box = document.getElementById('paletteList');
+          box.innerHTML = '';
+          PALETTES.forEach(function (pl, i) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            var on = i === tempPalette;
+            b.className = 'flex flex-col items-start gap-2 p-3 rounded border text-left transition-all duration-200 ease-spring ' + (on ? 'border-accent bg-accent/10 ring-2 ring-accent/20' : 'border-black/10 bg-surface-1');
+            b.innerHTML = '<span class="text-sm font-medium text-black">' + pl.name + '</span><span class="flex gap-1.5">' +
+              pl.colors.map(function (c) { return '<span class="h-5 w-5 rounded-full ring-1 ring-black/10" style="background:' + c + '"></span>'; }).join('') + '</span>';
+            b.addEventListener('click', function () { tempPalette = i; previewPalette = i; renderPalettes(); tick(); });
+            box.appendChild(b);
+          });
+        }
+
+        function openSettings() {
+          tempPeriods = state.periods.map(function (p) { return { id: p.id, name: p.name, start: p.start, end: p.end }; });
+          renderPeriodsEditor();
+          document.getElementById('soundInput').checked = state.soundEnabled;
+          tempAccent = state.accentColor || '#2563EB';
+          tempPalette = state.palette || 0;
+          previewPalette = null;
+          renderPalettes();
+          document.getElementById('colorClockInput').checked = !!state.colorClock;
+          renderSwatches();
+          tempWallpaperDataUrl = state.wallpaperDataUrl;
+          if (tempWallpaperDataUrl) showWallpaperPreview(tempWallpaperDataUrl); else hideWallpaperPreview();
+          document.getElementById('sheetOverlay').classList.remove('hidden');
+        }
+
+        window.closeSettings = function () {
+          document.getElementById('sheetOverlay').classList.add('hidden');
+          applyAccent(state.accentColor);
+          previewPalette = null;
+          tick();
+        };
+
+        document.getElementById('openSettingsBtn').addEventListener('click', openSettings);
+
+        document.getElementById('wallpaperInput').addEventListener('change', function (e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function (ev) {
+            var img = new Image();
+            img.onload = function () {
+              var maxDim = 1600;
+              var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+              var w = Math.round(img.width * scale);
+              var h = Math.round(img.height * scale);
+              var canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              var dataUrl;
+              try { dataUrl = canvas.toDataURL('image/jpeg', 0.82); }
+              catch (err) { dataUrl = ev.target.result; }
+              tempWallpaperDataUrl = dataUrl;
+              showWallpaperPreview(dataUrl);
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+
+        document.getElementById('removeWallpaperBtn').addEventListener('click', function () {
+          tempWallpaperDataUrl = null;
+          hideWallpaperPreview();
+          document.getElementById('wallpaperInput').value = '';
+        });
+
+        document.getElementById('addPeriodBtn').addEventListener('click', function () {
+          syncEditorToTemp();
+          var last = tempPeriods[tempPeriods.length - 1];
+          var start = last ? last.end : '08:30';
+          var end = addMinutesToTimeString(start, 40);
+          tempPeriods.push({ id: 'p' + Date.now(), name: 'Period ' + (tempPeriods.length + 1), start: start, end: end });
+          renderPeriodsEditor();
+        });
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', function () {
+          syncEditorToTemp();
+          if (tempPeriods.length === 0) return;
+
+          state.periods = tempPeriods.map(function (p) { return { id: p.id, name: p.name, start: p.start, end: p.end }; });
+          state.accentColor = tempAccent;
+          state.palette = tempPalette;
+          state.colorClock = document.getElementById('colorClockInput').checked;
+          state.soundEnabled = document.getElementById('soundInput').checked;
+          state.wallpaperDataUrl = tempWallpaperDataUrl;
+
+          saveState();
+          saveWallpaper(state.wallpaperDataUrl);
+          applyWallpaper();
+          lastCurrentIdx = undefined;
+          tick();
+          closeSettings();
+        });
+
+        function onScroll() {
+          var hero = document.getElementById('heroSection');
+          var wrap = document.getElementById('ringWrap');
+          var t = Math.min(1, window.scrollY / Math.max(1, hero.offsetHeight * 0.7));
+          wrap.style.transform = 'scale(' + (1 - 0.4 * t).toFixed(3) + ')';
+          wrap.style.opacity = (1 - 0.35 * t).toFixed(3);
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        var deferredInstall = null;
+        function refreshInstallUI() {
+          var row = document.getElementById('installRow');
+          var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+          if (standalone) { row.classList.add('hidden'); return; }
+          row.classList.remove('hidden');
+          document.getElementById('installBtn').classList.toggle('hidden', !deferredInstall);
+          var hint = document.getElementById('installHint');
+          hint.classList.toggle('hidden', !!deferredInstall);
+          hint.textContent = /iphone|ipad|ipod/i.test(navigator.userAgent)
+            ? 'Tap the Share button in Safari, then choose Add to Home Screen.'
+            : 'Open your browser menu and choose Install app or Add to Home Screen.';
+        }
+        window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; refreshInstallUI(); });
+        window.addEventListener('appinstalled', function () { deferredInstall = null; refreshInstallUI(); });
+        document.getElementById('installBtn').addEventListener('click', function () {
+          if (!deferredInstall) return;
+          deferredInstall.prompt();
+          deferredInstall.userChoice.then(function () { deferredInstall = null; refreshInstallUI(); });
+        });
+        refreshInstallUI();
+        if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+          navigator.serviceWorker.register('sw.js').catch(function (err) { console.error('Offline support unavailable', err); });
+        }
+
+        loadState();
+        applyAccent(state.accentColor);
+        applyWallpaper();
+        tick();
+        tickInterval = setInterval(tick, 1000);
+      })();
+  </script>
+
+</body>
+
+</html>

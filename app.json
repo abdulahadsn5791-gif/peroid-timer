@@ -1,15 +1,18 @@
 {
   "expo": {
-    "name": "period-timer",
+    "name": "Period Timer",
     "slug": "period-timer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "periodtimer",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.periodtimer.app"
     },
     "android": {
+      "package": "com.periodtimer",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +23,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      "expo-audio",
+      "expo-dev-client",
+      "expo-notifications",
+      "@react-native-community/datetimepicker",
+      "./plugins/withPeriodTimerAndroid.js",
+      "expo-asset"
+    ]
   }
 }

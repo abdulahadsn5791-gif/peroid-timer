@@ -1,0 +1,11 @@
+# Bun configuration for this repo.
+# Bun is the package manager + script runner. Metro/Expo still run on Node
+# internally (Expo CLI is a Node program); bunx bridges them.
+[install]
+  # Keep the lockfile tight: one lockfile, committed.
+  frozenLockfile = false
+  production = false
+
+[test]
+  # Bun test is used for all domain/application/architecture tests.
+  testTimeout = 10000

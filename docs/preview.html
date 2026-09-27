@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Period Timer — design preview (light OS surface)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          canvas: '#F3F4F6',
+          surface: { 1: '#F9FAFB', 2: '#FFFFFF', 3: '#FFFFFF', 4: '#FFFFFF' },
+          accent: 'rgb(var(--accent-rgb, 37 99 235) / <alpha-value>)',
+          success: '#15803D', warning: '#B45309', danger: '#DC2626',
+        },
+        borderRadius: { sm: '8px', DEFAULT: '14px', lg: '20px', xl: '28px' },
+        fontFamily: { sans: ['-apple-system','SF Pro Display','SF Pro Text','Segoe UI Variable','Segoe UI','Roboto','sans-serif'] },
+        boxShadow: {
+          sm: '0 1px 2px rgba(16,24,40,0.06)',
+          DEFAULT: '0 4px 12px rgba(16,24,40,0.08)',
+          lg: '0 12px 28px rgba(16,24,40,0.14)',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  :root { --accent-rgb: 37 99 235; }
+  @keyframes sheet-in { from { transform: translateY(28px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: 0.35 } }
+  .sheet-enter { animation: sheet-in 240ms cubic-bezier(0.32,0.72,0,1); }
+  .scrim-enter { animation: fade-in 200ms ease-out; }
+  .pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+  .frosted-panel {
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    background: rgba(255,255,255,0.65); border: 1px solid rgba(0,0,0,0.05);
+  }
+  #wallpaperLayer { background-size: cover; background-position: center; }
+  #wallpaperScrim { background: transparent; }
+  body.has-wallpaper #wallpaperScrim { background: rgba(0,0,0,0.28); }
+  body.has-wallpaper .frosted-panel { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); }
+  .adaptive-primary { transition: color .3s ease, text-shadow .3s ease; }
+  body:not(.has-wallpaper) .adaptive-primary { color: rgba(0,0,0,0.92); }
+  body.has-wallpaper .adaptive-primary { color: rgba(255,255,255,0.97); text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+  .adaptive-secondary { transition: color .3s ease, text-shadow .3s ease; }
+  body:not(.has-wallpaper) .adaptive-secondary { color: rgba(0,0,0,0.5); }
+  body.has-wallpaper .adaptive-secondary { color: rgba(255,255,255,0.8); text-shadow: 0 1px 8px rgba(0,0,0,0.3); }
+  body:not(.has-wallpaper) .ring-track { stroke: rgba(0,0,0,0.08); }
+  body:not(.has-wallpaper) .ring-ticks { stroke: rgba(0,0,0,0.14); }
+  body.has-wallpaper .ring-track { stroke: rgba(255,255,255,0.28); }
+  body.has-wallpaper .ring-ticks { stroke: rgba(255,255,255,0.4); }
+  .ring-progress { transition: stroke .3s ease, stroke-dashoffset 1s linear; }
+</style>
+</head>
+<body class="bg-canvas font-sans antialiased">
+
+<div id="wallpaperLayer" class="fixed inset-0 z-0"></div>
+<div id="wallpaperScrim" class="fixed inset-0 z-0"></div>
+
+<div class="relative z-10 min-h-[100dvh] flex flex-col">
+  <header class="flex items-center justify-between px-5 pb-3 shrink-0" style="padding-top:max(1.25rem, env(safe-area-inset-top))">
+    <div>
+      <h1 class="adaptive-primary text-2xl font-bold tracking-tight leading-tight">Today</h1>
+      <p id="todayLabel" class="adaptive-secondary text-sm">—</p>
+    </div>
+    <button onclick="openSettings()" aria-label="Settings" class="frosted-panel h-11 w-11 flex items-center justify-center rounded-full shadow-sm">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-black/60"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="14" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="8" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="16" cy="18" r="2"/></svg>
+    </button>
+  </header>
+
+  <section id="hero" class="flex items-center justify-center px-4" style="min-height:calc(100dvh - 190px)">
+    <div id="ringWrap" class="relative" style="width:min(88vw,52dvh,480px);aspect-ratio:1">
+      <div class="frosted-panel absolute rounded-full shadow" style="inset:4%"></div>
+      <svg viewBox="0 0 200 200" class="absolute inset-0 w-full h-full -rotate-90" aria-hidden="true">
+        <circle cx="100" cy="100" r="79" fill="none" stroke-width="3.5" class="ring-ticks" stroke-dasharray="1.2 7.177"/>
+        <circle cx="100" cy="100" r="92" fill="none" stroke-width="9" class="ring-track"/>
+        <circle id="ringProgress" cx="100" cy="100" r="92" fill="none" stroke-width="9" stroke-linecap="round" class="ring-progress" stroke="rgb(var(--accent-rgb))" stroke-dasharray="578.05" stroke-dashoffset="0"/>
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-center" style="padding:0 14%">
+        <div id="heroName" class="adaptive-secondary font-medium truncate max-w-full text-[7.5cqw]">—</div>
+        <div id="heroTime" class="adaptive-primary font-thin tabular-nums tracking-tight leading-none text-[23cqw]" style="font-weight:100;margin:2cqw 0">--:--</div>
+        <div id="heroStatus" class="adaptive-secondary text-[5.5cqw]">—</div>
+      </div>
+    </div>
+  </section>
+
+  <main class="px-4 w-full max-w-md mx-auto" style="padding-bottom:max(2rem, env(safe-area-inset-bottom))">
+    <div class="frosted-panel rounded-xl p-2 shadow-sm">
+      <div id="list" class="space-y-0.5"></div>
+    </div>
+  </main>
+</div>
+
+<div id="modalRoot" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/30 scrim-enter" onclick="closeSettings()"></div>
+  <div class="sheet-enter absolute bottom-0 inset-x-0 md:inset-x-auto md:right-6 md:top-1/2 md:-translate-y-1/2 md:bottom-auto md:w-[460px] bg-surface-4 rounded-t-xl md:rounded-xl shadow-lg p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+    <div class="h-1 w-10 bg-black/10 rounded-full mx-auto md:hidden"></div>
+    <h3 class="text-xl font-semibold text-black">Schedule settings</h3>
+
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-black/60">Wallpaper</label>
+      <div id="wpWrap" class="hidden rounded-lg overflow-hidden border border-black/10 h-28 bg-surface-1">
+        <img id="wpPreview" class="w-full h-full object-cover" alt="Wallpaper preview">
+      </div>
+      <div class="flex gap-2">
+        <label class="flex-1 px-4 py-2.5 rounded bg-surface-1 border border-black/10 text-sm font-medium text-black text-center cursor-pointer hover:bg-surface-2 transition-colors duration-200">
+          Choose photo
+          <input id="wpInput" type="file" accept="image/*" class="hidden">
+        </label>
+        <button onclick="removeWallpaper()" class="px-4 py-2.5 rounded bg-surface-1 border border-black/10 text-sm font-medium text-danger hover:bg-danger/10 transition-colors duration-200">Remove</button>
+      </div>
+      <p class="text-xs text-black/40">Text turns white automatically once a photo is set.</p>
+    </div>
+
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-black/60">Accent color</label>
+      <div id="accentSwatches" class="flex flex-wrap gap-2.5"></div>
+      <p class="text-xs text-black/40">Buttons, switches and the current-period highlight. One accent only.</p>
+    </div>
+
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-black/60">Ring colors</label>
+      <div id="palettes" class="grid grid-cols-2 gap-2"></div>
+      <p class="text-xs text-black/40">Color 1 until 30% left · color 2 until 15% · color 3 in the last 15%.</p>
+    </div>
+
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-black/60">Live progress notification</label>
+      <p class="text-xs text-black/40">Ongoing notification with a real progress bar + chronometer countdown; visible from the shade and the lock screen while a period runs.</p>
+    </div>
+
+    <div class="flex items-center justify-between gap-4">
+      <label class="text-sm font-medium text-black">Also color the clock numbers</label>
+      <button role="switch" id="colorClockSwitch" onclick="toggleSwitch(this)" aria-checked="false" class="w-11 h-6 bg-black/10 rounded-full relative transition-all duration-200 ease-out">
+        <span class="absolute top-0.5 left-0.5 h-5 w-5 bg-white rounded-full shadow-sm transition-all duration-200"></span>
+      </button>
+    </div>
+
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-black/60">Class periods — set each one's real start and end time</label>
+      <div id="periodsEditor" class="space-y-2"></div>
+      <button onclick="addPeriod()" class="w-full px-4 py-2.5 rounded bg-surface-1 border border-dashed border-black/15 text-sm font-medium text-black/60 hover:bg-surface-2 transition-colors duration-200">+ Add period</button>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <label class="text-sm font-medium text-black">Sound when a period ends</label>
+      <button role="switch" id="soundSwitch" onclick="toggleSwitch(this)" aria-checked="true" class="w-11 h-6 bg-black/10 checked:bg-accent rounded-full relative transition-all duration-200 ease-out" style="background:#2563EB">
+        <span class="absolute top-0.5 left-[22px] h-5 w-5 bg-white rounded-full shadow-sm transition-all duration-200"></span>
+      </button>
+    </div>
+
+    <button onclick="save()" class="w-full px-5 py-3 rounded-lg" style="background:rgb(var(--accent-rgb));color:#fff;font-weight:500" class="shadow-sm">Save &amp; apply</button>
+  </div>
+</div>
+
+<script>
+  function applyAccent(hex){
+    var m = /^#([0-9a-f]{6})$/i.exec(hex||'');
+    if(!m) return;
+    var n = parseInt(m[1],16);
+    document.documentElement.style.setProperty('--accent-rgb', (n>>16&255)+' '+(n>>8&255)+' '+(n&255));
+    var rows = document.querySelectorAll('.savebtn');
+    rows.forEach(function(b){ b.style.background = hex; });
+  }
+  var ACCENTS = ['#2563EB','#0EA5E9','#15803D','#F97316','#DC2626','#EC4899','#8B5CF6','#111827'];
+  var PALETTES = [
+    { name:'Classic',  colors:['#2563EB','#B45309','#DC2626'] },
+    { name:'Signal',   colors:['#16A34A','#F59E0B','#DC2626'] },
+    { name:'Twilight', colors:['#0EA5E9','#8B5CF6','#EC4899'] },
+    { name:'Lagoon',   colors:['#14B8A6','#F97316','#E11D48'] },
+  ];
+  var temp = { accent:'#2563EB', palette:0, colorClock:false, sound:true, wallpaper:null };
+  var periods = [ {id:'p1',name:'Period 1',start:'08:30',end:'09:10'}, {id:'p2',name:'Period 2',start:'09:15',end:'09:55'},
+                  {id:'p3',name:'Period 3',start:'10:00',end:'10:40'}, {id:'p4',name:'Period 4',start:'10:45',end:'11:25'} ];
+  var RING_C = 578.05, lastIdx = -1;
+
+  function sec(t){ var p=(t||'00:00').split(':'); return ((+p[0]||0)*3600)+((+p[1]||0)*60); }
+  function label(min){ var h=Math.floor(min/60), m=min%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; }
+  function fmt(s){ s=Math.max(0,Math.round(s)); var h=Math.floor(s/3600), m=Math.floor((s%3600)/60), x=s%60;
+    return h>0 ? h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x : (m<10?'0':'')+m+':'+(x<10?'0':'')+x; }
+  function addMin(t,a){ return ('0'+Math.floor((((sec(t)/60+a)%1440)+1440)%1440/60)).slice(-2)+':'+
+    ('0'+((((sec(t)/60+a)%1440)+1440)%1440%60)).slice(-2); }
+  function range(p){ var a=label(sec(p.start)/60), b=label(sec(p.end)/60); if(a.slice(-2)===b.slice(-2)) a=a.slice(0,-3); return a+' – '+b; }
+  function palette(){ return PALETTES[temp.palette].colors; }
+  function phase(pct){ return pct<=0.15?2:(pct<=0.3?1:0); }
+
+  function compute(now){
+    var ci=-1, ni=-1;
+    for(var i=0;i<periods.length;i++){ if(now>=sec(periods[i].start)&&now<sec(periods[i].end)){ci=i;break;} }
+    if(ci===-1){ for(var j=0;j<periods.length;j++){ if(sec(periods[j].start)>now){ni=j;break;} } }
+    return {ci:ci,ni:ni};
+  }
+
+  function tick(){
+    var d=new Date(), now=d.getHours()*3600+d.getMinutes()*60+d.getSeconds();
+    var c=compute(now), ring=document.getElementById('ringProgress');
+    var heroName=el('heroName'), heroTime=el('heroTime'), heroStatus=el('heroStatus');
+    function setClock(col){ heroTime.style.color = col||''; }
+    if(c.ci!==-1){
+      var p=periods[c.ci], s=sec(p.start), e=sec(p.end), rem=Math.max(0,e-now), total=Math.max(1,e-s);
+      var pct=rem/total, ph=phase(pct), col=palette()[ph];
+      heroTime.textContent=fmt(rem);
+      setClock(temp.colorClock?col:(ph>0?col:null));
+      ring.style.strokeDashoffset=String(RING_C*(1-pct)); ring.style.stroke=col;
+      heroName.textContent=p.name; heroStatus.textContent='Ends at '+label(e/60);
+      heroTime.style.fontSize=heroTime.textContent.length>5?'16cqw':'23cqw';
+      var bar=document.getElementById('rowBar'); if(bar){bar.style.width=((1-pct)*100).toFixed(1)+'%';bar.style.background=col;}
+      var rt=document.getElementById('rowTime'); if(rt){rt.textContent=fmt(rem);rt.style.color=ph>0?col:'';}
+    } else if(c.ni!==-1){
+      var np=periods[c.ni], until=Math.max(0,sec(np.start)-now), prv=c.ni>0?sec(periods[c.ni-1].end):sec(np.start)-1800;
+      heroTime.textContent=fmt(until);
+      setClock(temp.colorClock?palette()[0]:null);
+      ring.style.strokeDashoffset=String(RING_C*(1-Math.min(1,until/Math.max(60,sec(np.start)-prv)))); ring.style.stroke=palette()[0];
+      heroName.textContent='Up next: '+np.name; heroStatus.textContent='Starts at '+label(sec(np.start)/60);
+      heroTime.style.fontSize='23cqw';
+    } else {
+      heroTime.textContent='--:--'; setClock(null); ring.style.strokeDashoffset=String(RING_C); ring.style.stroke='';
+      heroName.textContent='All periods complete'; heroStatus.textContent='See you tomorrow';
+    }
+    if(c.ci!==lastIdx){ lastIdx=c.ci; renderList(now); }
+    el('todayLabel').textContent=d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  }
+
+  function renderList(now){
+    var box=el('list'); box.innerHTML='';
+    periods.forEach(function(p){
+      var s=sec(p.start), e=sec(p.end), st=now>=e?'passed':(now>=s&&now<e?'current':'upcoming');
+      var row=document.createElement('div');
+      if(st==='passed'){
+        row.className='flex items-center gap-3 px-3.5 py-3 rounded-lg';
+        row.innerHTML='<div class="h-6 w-6 rounded-full flex items-center justify-center shrink-0" style="background:#15803D"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'+
+          '<p class="adaptive-secondary text-base flex-1 min-w-0 truncate line-through">'+esc(p.name)+'</p><p class="adaptive-secondary text-xs shrink-0">Done</p>';
+      } else if(st==='current'){
+        row.className='px-3.5 py-3 rounded-lg';
+        row.style.background='rgb(var(--accent-rgb) / 0.10)';
+        row.innerHTML='<div class="flex items-center gap-3"><span class="h-2.5 w-2.5 rounded-full pulse-dot shrink-0" style="background:rgb(var(--accent-rgb))"></span>'+
+          '<div class="flex-1 min-w-0"><p class="adaptive-primary text-base font-semibold truncate">'+esc(p.name)+'</p><p class="adaptive-secondary text-xs">'+range(p)+'</p></div>'+
+          '<p id="rowTime" class="text-base font-bold tabular-nums shrink-0">00:00</p></div>'+
+          '<div class="mt-2.5 h-1.5 rounded-full bg-black/10 overflow-hidden"><div id="rowBar" class="h-full rounded-full" style="width:0%;background:rgb(var(--accent-rgb))"></div></div>';
+      } else {
+        row.className='flex items-center gap-3 px-3.5 py-3 rounded-lg';
+        row.innerHTML='<div class="h-6 w-6 rounded-full border-2 shrink-0" style="border-color:rgba(0,0,0,0.15)"></div>'+
+          '<p class="adaptive-primary text-base flex-1 min-w-0 truncate">'+esc(p.name)+'</p><p class="adaptive-secondary text-xs shrink-0">'+range(p)+'</p>';
+      }
+      box.appendChild(row);
+    });
+  }
+
+  function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  function el(id){ return document.getElementById(id); }
+
+  function renderAccentSwatches(){
+    var box=el('accentSwatches'); box.innerHTML='';
+    ACCENTS.forEach(function(c){
+      var b=document.createElement('button');
+      var on=c.toLowerCase()===temp.accent.toLowerCase();
+      b.className='h-9 w-9 rounded-full transition-all duration-200 '+(on?'ring-2 ring-offset-2 ring-black/70':'ring-1 ring-black/10');
+      b.style.background=c;
+      b.title='Accent '+c;
+      b.onclick=function(){ temp.accent=c; applyAccent(c); renderAccentSwatches(); };
+      box.appendChild(b);
+    });
+    var custom=document.createElement('label');
+    custom.className='relative h-9 w-9 rounded-full border border-black/10 bg-surface-1 flex items-center justify-center cursor-pointer text-black/60';
+    custom.title='Custom accent';
+    custom.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><input type="color" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">';
+    custom.querySelector('input').oninput=function(e){ temp.accent=e.target.value; applyAccent(temp.accent); renderAccentSwatches(); };
+    box.appendChild(custom);
+  }
+
+  function renderPalettes(){
+    var box=el('palettes'); box.innerHTML='';
+    PALETTES.forEach(function(pl,i){
+      var on=i===temp.palette;
+      var b=document.createElement('button');
+      b.className='flex flex-col items-start gap-2 p-3 rounded border text-left transition-all duration-200 '+(on?'':'border-black/10 bg-surface-1');
+      if(on) b.style.cssText='border-color:rgb(var(--accent-rgb));background:rgb(var(--accent-rgb)/0.10);box-shadow:0 0 0 2px rgb(var(--accent-rgb)/0.20)';
+      var dots=pl.colors.map(function(c){ return '<span class="h-5 w-5 rounded-full ring-1 ring-black/10 inline-block" style="background:'+c+'"></span>'; }).join('');
+      b.innerHTML='<span class="text-sm font-medium text-black">'+pl.name+'</span><span class="flex gap-1.5">'+dots+'</span>';
+      b.onclick=function(){ temp.palette=i; renderPalettes(); tick(); };
+      box.appendChild(b);
+    });
+  }
+
+  function syncEditor(){
+    var rows=document.querySelectorAll('#periodsEditor > div');
+    rows.forEach(function(row,i){
+      if(!periods[i]) return;
+      periods[i].name=row.querySelector('.nm').value.trim()||('Period '+(i+1));
+      periods[i].start=row.querySelector('.st').value||periods[i].start;
+      periods[i].end=row.querySelector('.en').value||periods[i].end;
+    });
+  }
+  function renderEditor(){
+    var box=el('periodsEditor'); box.innerHTML='';
+    periods.forEach(function(p,i){
+      var row=document.createElement('div');
+      row.className='bg-surface-1 rounded p-2.5 border border-black/10 space-y-2';
+      row.innerHTML='<div class="flex items-center gap-1.5">'+
+        '<input type="text" class="nm flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" value="'+esc(p.name)+'">'+
+        '<button class="up h-7 w-7 flex items-center justify-center rounded-sm hover:bg-surface-2 text-black/40" title="Move up"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 15l-6-6-6 6"/></svg></button>'+
+        '<button class="dn h-7 w-7 flex items-center justify-center rounded-sm hover:bg-surface-2 text-black/40" title="Move down"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>'+
+        '<button class="rm h-7 w-7 flex items-center justify-center rounded-sm hover:bg-danger/10 text-danger" title="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>'+
+        '</div>'+
+        '<div class="flex items-center gap-2">'+
+        '<input type="time" class="st flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm" value="'+p.start+'">'+
+        '<span class="text-black/30 text-xs shrink-0">to</span>'+
+        '<input type="time" class="en flex-1 min-w-0 px-2 py-1.5 rounded-sm bg-surface-2 border border-black/10 text-sm" value="'+p.end+'">'+
+        '</div>';
+      box.appendChild(row);
+      row.querySelector('.up').onclick=function(){ syncEditor(); if(i>0){ var t=periods[i]; periods[i]=periods[i-1]; periods[i-1]=t; renderEditor(); } };
+      row.querySelector('.dn').onclick=function(){ syncEditor(); if(i<periods.length-1){ var t=periods[i]; periods[i]=periods[i+1]; periods[i+1]=t; renderEditor(); } };
+      row.querySelector('.rm').onclick=function(){ syncEditor(); if(periods.length>1){ periods.splice(i,1); renderEditor(); } };
+    });
+  }
+  function addPeriod(){ syncEditor(); var last=periods[periods.length-1]; var s=last?last.end:'08:30'; periods.push({id:'p'+Date.now(),name:'Period '+(periods.length+1),start:s,end:addMin(s,40)}); renderEditor(); }
+
+  function toggleSwitch(btn){
+    var k=btn.id==='colorClockSwitch'?'colorClock':'sound';
+    if(k==='sound'){ temp.sound=!temp.sound; btn.setAttribute('aria-checked',temp.sound); btn.style.background=temp.sound?('#2563EB'):'rgba(0,0,0,0.10)'; var dot=btn.querySelector('span'); dot.style.left=temp.sound?'22px':'2px'; }
+    else { temp.colorClock=!temp.colorClock; btn.setAttribute('aria-checked',temp.colorClock); btn.style.background=temp.colorClock?'rgb(var(--accent-rgb))':'rgba(0,0,0,0.10)'; var d2=btn.querySelector('span'); d2.style.left=temp.colorClock?'22px':'2px'; tick(); }
+  }
+
+  function openSettings(){
+    el('modalRoot').classList.remove('hidden');
+    renderAccentSwatches(); renderPalettes(); renderEditor();
+    el('soundSwitch').style.background=temp.sound?'#2563EB':'rgba(0,0,0,0.10)';
+    el('soundSwitch').querySelector('span').style.left=temp.sound?'22px':'2px';
+    el('colorClockSwitch').style.background=temp.colorClock?'rgb(var(--accent-rgb))':'rgba(0,0,0,0.10)';
+    el('colorClockSwitch').querySelector('span').style.left=temp.colorClock?'22px':'2px';
+    if(temp.wallpaper){ el('wpWrap').classList.remove('hidden'); el('wpPreview').src=temp.wallpaper; } else el('wpWrap').classList.add('hidden');
+  }
+  function closeSettings(){ el('modalRoot').classList.add('hidden'); applyAccent(temp.accent); tick(); }
+  function removeWallpaper(){ temp.wallpaper=null; el('wpWrap').classList.add('hidden'); el('wpPreview').src=''; document.body.classList.remove('has-wallpaper'); el('wallpaperLayer').style.backgroundImage='none'; }
+  function save(){
+    syncEditor();
+    applyAccent(temp.accent); closeSettings();
+    if(temp.wallpaper){ document.body.classList.add('has-wallpaper'); el('wallpaperLayer').style.backgroundImage='url("'+temp.wallpaper+'")'; }
+    lastIdx=-1; tick();
+  }
+
+  el('wpInput').addEventListener('change',function(e){
+    var f=e.target.files&&e.target.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(ev){ temp.wallpaper=ev.target.result; el('wpWrap').classList.remove('hidden'); el('wpPreview').src=temp.wallpaper; };
+    r.readAsDataURL(f);
+  });
+
+  function onScroll(){
+    var t=Math.min(1,window.scrollY/Math.max(1,el('hero').offsetHeight*0.7));
+    var wrap=el('ringWrap');
+    wrap.style.transform='scale('+(1-0.4*t).toFixed(3)+')';
+    wrap.style.opacity=(1-0.35*t).toFixed(3);
+  }
+  window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+  applyAccent(temp.accent); tick(); setInterval(tick,1000);
+</script>
+</body>
+</html>

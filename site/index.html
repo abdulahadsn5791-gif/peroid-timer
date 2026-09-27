@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F3F4F6">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Period Timer — a class period countdown with a live lock-screen notification. Download the Android APK.">
+  <title>Period Timer — Download for Android</title>
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F3F4F6',
+            surface: { 1: '#F9FAFB', 2: '#FFFFFF', 3: '#FFFFFF', 4: '#FFFFFF' },
+            accent: '#2563EB',
+            success: '#15803D',
+            warning: '#B45309',
+            danger: '#DC2626',
+          },
+          borderRadius: { sm: '8px', DEFAULT: '14px', lg: '20px', xl: '28px' },
+          fontFamily: {
+            sans: ['-apple-system', 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          transitionTimingFunction: {
+            spring: 'cubic-bezier(0.32, 0.72, 0, 1)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+
+    .tap {
+      min-height: 44px;
+    }
+  </style>
+</head>
+
+<body class="bg-canvas text-black font-sans antialiased">
+  <main class="mx-auto w-full max-w-2xl px-4 pb-20 pt-10 sm:pt-16">
+
+    <header class="flex flex-col items-center text-center">
+      <img src="icon-512.png" alt="" width="72" height="72"
+        class="h-[72px] w-[72px] rounded-[20px] border border-black/10 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+      <h1 class="mt-6 text-3xl font-bold tracking-tight">Period Timer</h1>
+      <p class="mt-3 text-[17px] leading-snug text-black/60">
+        Countdown for class periods, with a live notification that keeps
+        counting on the lock screen.
+      </p>
+    </header>
+
+    <section class="mt-8 rounded-xl border border-black/10 bg-surface-2 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] sm:p-6">
+      <a id="download" href="https://github.com/abdulahadsn5791-gif/timer/releases/latest/download/period-timer.apk"
+        download
+        class="tap flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-[17px] font-semibold text-white transition duration-200 ease-spring hover:bg-blue-700 active:scale-[0.99]">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v12" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M5 21h14" />
+        </svg>
+        Download for Android
+      </a>
+      <div class="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-black/40">
+        <span>v1.0.0</span><span aria-hidden="true">·</span>
+        <span>APK</span><span aria-hidden="true">·</span>
+        <span>~103 MB</span><span aria-hidden="true">·</span>
+        <span>Android 7.0+</span>
+      </div>
+      <p class="mt-3 text-center text-[13px] leading-relaxed text-black/40">
+        One APK covers every CPU, so it also runs on Android Studio emulators.
+        That is what makes the file large.
+      </p>
+    </section>
+
+    <section class="mt-6">
+      <h2 class="px-1 text-[13px] font-semibold uppercase tracking-wide text-black/40">Installing</h2>
+      <ol class="mt-2 overflow-hidden rounded-xl border border-black/10 bg-surface-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <li class="tap flex gap-3 border-b border-black/5 px-4 py-3.5 last:border-b-0">
+          <span
+            class="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-1 text-[13px] font-semibold text-black/60">1</span>
+          <p class="text-[15px] leading-snug text-black/80">Tap the button above and let the file finish
+            downloading.</p>
+        </li>
+        <li class="tap flex gap-3 border-b border-black/5 px-4 py-3.5 last:border-b-0">
+          <span
+            class="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-1 text-[13px] font-semibold text-black/60">2</span>
+          <p class="text-[15px] leading-snug text-black/80">Open the downloaded
+            <code class="rounded-sm bg-surface-1 px-1 py-0.5 text-[13px]">period-timer.apk</code> from your
+            notification bar or the Files app.</p>
+        </li>
+        <li class="tap flex gap-3 border-b border-black/5 px-4 py-3.5 last:border-b-0">
+          <span
+            class="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-1 text-[13px] font-semibold text-black/60">3</span>
+          <p class="text-[15px] leading-snug text-black/80">Android will ask you to allow
+            <span class="font-medium text-black">Install unknown apps</span> for whichever app downloaded
+            it. Grant it once — the permission is per-app.</p>
+        </li>
+        <li class="tap flex gap-3 px-4 py-3.5">
+          <span
+            class="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-1 text-[13px] font-semibold text-black/60">4</span>
+          <p class="text-[15px] leading-snug text-black/80">Install, open the app, and allow
+            notifications and exact alarms when asked.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="mt-6">
+      <h2 class="px-1 text-[13px] font-semibold uppercase tracking-wide text-black/40">Keep the countdown alive</h2>
+      <div class="mt-2 rounded-xl border border-black/10 bg-surface-2 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <p class="text-[15px] leading-relaxed text-black/60">
+          Samsung, Xiaomi, OnePlus and Oppo kill background work aggressively. If the notification goes stale:
+        </p>
+        <ul class="mt-3 space-y-2">
+          <li class="flex gap-2.5 text-[15px] leading-snug text-black/80">
+            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden="true"></span>
+            <span>Grant exact alarms under <span class="font-medium text-black">Settings → Alarms &amp;
+                reminders</span></span>
+          </li>
+          <li class="flex gap-2.5 text-[15px] leading-snug text-black/80">
+            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden="true"></span>
+            <span>Add Period Timer to the OEM's <span class="font-medium text-black">protected / no battery
+                optimisation</span> list</span>
+          </li>
+          <li class="flex gap-2.5 text-[15px] leading-snug text-black/80">
+            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden="true"></span>
+            <span>Set <span class="font-medium text-black">App battery management → Unrestricted</span></span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="mt-6">
+      <h2 class="px-1 text-[13px] font-semibold uppercase tracking-wide text-black/40">Good to know</h2>
+      <div class="mt-2 overflow-hidden rounded-xl border border-black/10 bg-surface-2 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <div class="border-b border-black/5 px-4 py-3.5">
+          <p class="text-[15px] font-medium text-black">Fully offline</p>
+          <p class="mt-1 text-[15px] leading-snug text-black/60">
+            No account, no sign-in, no network calls. Your schedule stays on the phone.
+          </p>
+        </div>
+        <div class="border-b border-black/5 px-4 py-3.5">
+          <p class="text-[15px] font-medium text-black">Never touches your wallpaper</p>
+          <p class="mt-1 text-[15px] leading-snug text-black/60">
+            There is no lock-screen presence mode and no full-screen alarm. The live notification is the
+            surface.
+          </p>
+        </div>
+        <div class="px-4 py-3.5">
+          <p class="text-[15px] font-medium text-black">Android only for now</p>
+          <p class="mt-1 text-[15px] leading-snug text-black/60">iOS is not released in this pass.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-8 flex flex-col items-center gap-3 text-center">
+      <a href="https://github.com/abdulahadsn5791-gif/timer/releases"
+        class="tap inline-flex items-center px-2 text-[15px] font-medium text-accent transition duration-200 ease-spring hover:underline">
+        Release notes and older versions
+      </a>
+      <a href="https://github.com/abdulahadsn5791-gif/timer"
+        class="tap inline-flex items-center px-2 text-[15px] text-black/60 transition duration-200 ease-spring hover:text-black">
+        View the source
+      </a>
+      <p class="mt-2 text-[13px] text-black/40">
+        Checksums for every download are attached to each release.
+      </p>
+    </footer>
+  </main>
+</body>
+
+</html>
