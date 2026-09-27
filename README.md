@@ -3,9 +3,9 @@
 A countdown timer for class periods, with a live notification that keeps
 counting on the lock screen and a home-screen widget.
 
-[![Release](https://img.shields.io/github/v/release/abdulahadsn5791-gif/timer)](https://github.com/abdulahadsn5791-gif/timer/releases)
-[![Download page](https://img.shields.io/badge/download-Android-brightgreen)](https://abdulahadsn5791-gif.github.io/timer/)
-[![License](https://img.shields.io/github/license/abdulahadsn5791-gif/timer)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/abdulahadsn5791-gif/peroid-timer)](https://github.com/abdulahadsn5791-gif/peroid-timer/releases)
+[![Download page](https://img.shields.io/badge/download-Android-brightgreen)](https://abdulahadsn5791-gif.github.io/peroid-timer/)
+[![License](https://img.shields.io/github/license/abdulahadsn5791-gif/peroid-timer)](./LICENSE)
 
 - **Live progress notification** — real progress bar plus chronometer, anchored
   by exact alarms so it survives the screen turning off
@@ -24,13 +24,13 @@ Built with Expo SDK 57 / React Native 0.86 on the New Architecture.
 
 ## Get the app
 
-**→ [Download page](https://abdulahadsn5791-gif.github.io/timer/)** — friendlier
+**→ [Download page](https://abdulahadsn5791-gif.github.io/peroid-timer/)** — friendlier
 for sharing, with install notes and a checksum.
 
-**→ [Direct APK](https://github.com/abdulahadsn5791-gif/timer/releases/latest/download/period-timer.apk)**
+**→ [Direct APK](https://github.com/abdulahadsn5791-gif/peroid-timer/releases/latest/download/period-timer.apk)**
 
 That direct link always serves the newest release, so you never need to hunt for
-a version. The [releases page](https://github.com/abdulahadsn5791-gif/timer/releases)
+a version. The [releases page](https://github.com/abdulahadsn5791-gif/peroid-timer/releases)
 has the notes and a `SHA256SUMS` file for verifying the download.
 
 | | |
