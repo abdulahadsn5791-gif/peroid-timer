@@ -3,22 +3,42 @@
 A countdown timer for class periods, with a live notification that keeps
 counting on the lock screen and a home-screen widget.
 
+[![Release](https://img.shields.io/github/v/release/abdulahadsn5791-gif/timer)](https://github.com/abdulahadsn5791-gif/timer/releases)
+[![Download page](https://img.shields.io/badge/download-Android-brightgreen)](https://abdulahadsn5791-gif.github.io/timer/)
+[![License](https://img.shields.io/github/license/abdulahadsn5791-gif/timer)](./LICENSE)
+
 - **Live progress notification** — real progress bar plus chronometer, anchored
   by exact alarms so it survives the screen turning off
 - **Home-screen widget** — next period and time remaining at a glance
 - **Reboot-surviving** — alarms are rescheduled after a restart
+- **Editable timetable** — rename periods and set your own start/end times
+- **Theming** — accent colour, ring palettes, and optional colour for the clock,
+  notification and active bars
 - **Offline** — everything stays on the phone (MMKV), no account, no network
 - **All Android ABIs** in one APK, so phones *and* Android Studio emulators work
 
 Built with Expo SDK 57 / React Native 0.86 on the New Architecture.
 
-## Download
+> The app ships with four sample periods (08:30–11:25). Change the names and
+> times in **Settings** to match your own timetable.
 
-**→ [Download the latest APK](https://github.com/abdulahadsn5791-gif/timer/releases/latest/download/period-timer.apk)**
+## Get the app
 
-That link always serves the newest release, so you never need to hunt for a
-version. Prefer a page to read first? See the releases page for notes and
-checksums.
+**→ [Download page](https://abdulahadsn5791-gif.github.io/timer/)** — friendlier
+for sharing, with install notes and a checksum.
+
+**→ [Direct APK](https://github.com/abdulahadsn5791-gif/timer/releases/latest/download/period-timer.apk)**
+
+That direct link always serves the newest release, so you never need to hunt for
+a version. The [releases page](https://github.com/abdulahadsn5791-gif/timer/releases)
+has the notes and a `SHA256SUMS` file for verifying the download.
+
+| | |
+| --- | --- |
+| Current release | `v1.0.0` — `versionCode 10000` |
+| Size | ~107 MB (one APK holds all four ABIs) |
+| ABIs | `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` |
+| Signing | release key, so future versions install over this one cleanly |
 
 ### Installing on Android
 
@@ -70,12 +90,26 @@ bunx expo run:android  # prebuild if needed, build, install on a device/emulator
 
 ### Release APK
 
+For a local build, always switch to release mode first. It drops the Expo dev
+client so it is not compiled into a distributed APK.
+
 ```sh
-bun scripts/release-mode.mjs          # dev: keep the Expo dev client
+PERIOD_TIMER_RELEASE=1 bun scripts/release-mode.mjs   # shipping: drop dev client
 bunx expo prebuild
 cd android && ./gradlew assembleRelease
 # android/app/build/outputs/apk/release/app-release.apk
 ```
+
+**The env var is the whole switch.** The script reads `PERIOD_TIMER_RELEASE=1`;
+run it bare and it does the opposite, putting the dev client back for
+day-to-day `expo run:android` work:
+
+```sh
+bun scripts/release-mode.mjs   # dev: keep expo-dev-client
+```
+
+It rewrites the `expo.autolinking` block in `package.json` in place, so commit
+the dev-mode version rather than the release-mode one.
 
 Release builds are signed with the real key only when one is supplied, and the
 Expo dev client is dropped from them — see `scripts/release-mode.mjs` and
@@ -83,20 +117,28 @@ Expo dev client is dropped from them — see `scripts/release-mode.mjs` and
 back to the debug key, which is fine for local testing but must not be
 published.
 
-To cut a release, push a tag and let CI do it:
+### Cutting a release
+
+Tag and push; CI does the rest:
 
 ```sh
-git tag v1.0.0 && git push origin v1.0.0
+git tag v1.0.2 && git push origin v1.0.2
 ```
 
-The tag drives everything: `v1.2.3` becomes `versionName 1.2.3` and
-`versionCode 10203`, and the workflow publishes `period-timer.apk` to the
-release. It fails if the tag disagrees with `expo.version` in `app.json`.
+**Skip `v1.0.1`.** `versionCode` is derived from the tag — `v1.2.3` becomes
+`versionCode 10203` — so the next patch release has to keep moving forward.
+Never re-push an existing tag either; the workflow publishes to that tag's
+release.
+
+The build takes roughly **85 minutes** on GitHub's runners, because one release
+carries all four ABIs. The tag drives everything, and the run fails if the tag
+disagrees with `expo.version` in `app.json`.
 
 Signing secrets are read from `PERIOD_TIMER_KEYSTORE`,
 `PERIOD_TIMER_STORE_PASSWORD`, `PERIOD_TIMER_KEY_ALIAS`,
 `PERIOD_TIMER_KEY_PASSWORD`, `PERIOD_TIMER_VERSION_CODE` and
-`PERIOD_TIMER_VERSION_NAME`.
+`PERIOD_TIMER_VERSION_NAME`. The key's fingerprint is recorded in
+`docs/COMMANDS.md`.
 
 ## Native code
 
@@ -113,10 +155,16 @@ it only reads the snapshot the app writes.
 | `src/domain` | entities, value objects, period rules |
 | `src/application` | use cases and ports |
 | `src/adapters` | storage, notifications, Android bridges |
+| `src/composition-root.ts` | wires the layers together |
 | `native/android` | Kotlin sources, resources, widget |
 | `plugins` | the Expo config plugin |
+| `scripts` | release-mode toggle |
 | `tests` | domain, application and architecture tests |
 | `docs` | commands, design rules, known limits, test checklist |
+| `site` | the static download page published via GitHub Pages |
+
+`docs/preview.html` is a static mock of the main screen, useful for reviewing
+design changes without a build.
 
 ## License
 
