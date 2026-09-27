@@ -58,6 +58,23 @@ Signing secrets (repository secrets, never in git):
 refuses to build if `PERIOD_TIMER_KEYSTORE` points at a file that is not there,
 so a typo can't quietly publish a debug-signed APK.
 
+### The release key
+
+The keystore lives outside the repository, in `~/keys/period-timer.jks` (mode
+600, alongside its password in `period-timer.credentials.txt`). **Lose it and no
+future release can install over an existing one**, so keep a second copy off this
+machine. Fingerprint of the certificate every published APK is signed with:
+
+```
+SHA256: AE:DC:06:EA:CB:98:DE:25:7A:87:A6:4F:AA:4F:7A:8B:03:AB:95:F6:05:0C:7F:1D:2E:6C:40:86:87:6C:5E:BC
+```
+
+Compare an installed build against it with:
+```sh
+$ANDROID_HOME/build-tools/*/aapt2 dump badging <app.apk>
+apksigner verify --print-certs <app.apk>
+```
+
 ## What the config plugin does (steps 1–4 run automatically inside prebuild)
 1. Patches `AndroidManifest` — FGS + exact-alarm permissions, the
    `PeriodForegroundService` (specialUse), alarm/boot receivers, home widget.
