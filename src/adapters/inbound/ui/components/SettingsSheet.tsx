@@ -16,6 +16,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { BlurTargetView, BlurView } from "expo-blur";
+import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { tokens, shadow } from "../design-system/tokens";
 import type { SettingsDraftVM, PeriodDraftVM } from "@application/ports/view-models/ViewModels";
@@ -106,6 +107,9 @@ function BlurSlider({ value, accent, onValueChange }: { value: number; accent: s
 
 export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, sceneBlur }: Props) {
   const accent = draft.accentColor;
+  // app.json expo.version — CI refuses to build a tag that disagrees with it,
+  // so this always equals the installed release's version.
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const phonePreviewTarget = useRef<RNView | null>(null);
   const [customHex, setCustomHex] = useState(draft.accentColor);
   const [editing, setEditing] = useState<null | { id: string; field: "start" | "end" }>(null);
@@ -452,6 +456,8 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
               >
                 <Text style={styles.saveText}>Save &amp; apply</Text>
               </PressableScale>
+
+              <Text style={styles.versionText}>Period Timer {appVersion}</Text>
             </ScrollView>
           </BlurView>
         </View>
@@ -1194,5 +1200,11 @@ const styles = StyleSheet.create({
     color: tokens.color.white,
     fontSize: tokens.text.body,
     fontWeight: "500",
+  },
+  versionText: {
+    textAlign: "center",
+    marginTop: tokens.spacing.lg,
+    fontSize: tokens.text.micro,
+    color: tokens.color.text.tertiary,
   },
 });
