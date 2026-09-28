@@ -134,6 +134,13 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
   );
 
   const dayPeriods = draft.periods;
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  // Switching day jumps back to the tabs + that day's period list — the thing
+  // the user is editing — instead of stranding them wherever they scrolled.
+  useEffect(() => {
+    if (visible) scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [draft.weekday, visible]);
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay} pointerEvents="box-none">
@@ -152,6 +159,7 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
           >
             {!isWide && <View style={styles.grabber} />}
             <ScrollView
+              ref={scrollRef}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
@@ -167,7 +175,10 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
                   return (
                     <PressableScale
                       key={label}
-                      onPress={() => actions.setWeekday(index)}
+                      onPress={() => {
+                        setEditing(null); // an open time editor must not leak across days
+                        actions.setWeekday(index);
+                      }}
                       haptic="selection"
                       style={[styles.weekdayTab, active && { backgroundColor: accent }]}
                       accessibilityRole="tab"
@@ -210,6 +221,35 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
                 </PressableScale>
               </View>
               <Hint>Empty preset = a lecture-free day: no countdown, no alarm, no notification.</Hint>
+
+              <SectionLabel>
+                {`${WEEKDAY_TABS[draft.weekday]} periods — set each one's real start and end time`}
+              </SectionLabel>
+              <Group>
+                {dayPeriods.map((period, index) => (
+                  <Fragment key={period.id}>
+                    {index > 0 ? <GroupSeparator /> : null}
+                    <PeriodRow
+                      period={period}
+                      index={index}
+                      accent={accent}
+                      actions={actions}
+                      editing={editing?.id === period.id ? editing.field : null}
+                      onBeginEdit={(field) => setEditing({ id: period.id, field })}
+                      onEditingDone={() => setEditing(null)}
+                    />
+                  </Fragment>
+                ))}
+                {dayPeriods.length === 0 ? (
+                  <View style={styles.emptyDayBox}>
+                    <Text style={styles.emptyDayText}>No lectures on {WEEKDAY_TABS[draft.weekday]}</Text>
+                    <Text style={styles.emptyDaySub}>Add a period below to schedule this day.</Text>
+                  </View>
+                ) : null}
+              </Group>
+              <PressableScale onPress={() => actions.addPeriod()} haptic="selection" style={[styles.ghostBtn, styles.addBtn]}>
+                <Text style={[styles.ghostBtnText, { color: tokens.color.text.secondary }]}>+ Add period</Text>
+              </PressableScale>
 
               <SectionLabel>App background</SectionLabel>
               <View style={styles.backgroundPreviewRow}>
@@ -355,35 +395,6 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
                 />
               </Group>
               <Hint>Watch the live notification on your screen change color with each phase of the current period. Turn on &quot;Color active bars&quot; to light up the ring ticks you have already elapsed.</Hint>
-
-              <SectionLabel>
-                {`${WEEKDAY_TABS[draft.weekday]} periods — set each one's real start and end time`}
-              </SectionLabel>
-              <Group>
-                {dayPeriods.map((period, index) => (
-                  <Fragment key={period.id}>
-                    {index > 0 ? <GroupSeparator /> : null}
-                    <PeriodRow
-                      period={period}
-                      index={index}
-                      accent={accent}
-                      actions={actions}
-                      editing={editing?.id === period.id ? editing.field : null}
-                      onBeginEdit={(field) => setEditing({ id: period.id, field })}
-                      onEditingDone={() => setEditing(null)}
-                    />
-                  </Fragment>
-                ))}
-                {dayPeriods.length === 0 ? (
-                  <View style={styles.emptyDayBox}>
-                    <Text style={styles.emptyDayText}>No lectures on {WEEKDAY_TABS[draft.weekday]}</Text>
-                    <Text style={styles.emptyDaySub}>Add a period below to schedule this day.</Text>
-                  </View>
-                ) : null}
-              </Group>
-              <PressableScale onPress={() => actions.addPeriod()} haptic="selection" style={[styles.ghostBtn, styles.addBtn]}>
-                <Text style={[styles.ghostBtnText, { color: tokens.color.text.secondary }]}>+ Add period</Text>
-              </PressableScale>
 
               <SectionLabel>Notifications</SectionLabel>
               <Group>
