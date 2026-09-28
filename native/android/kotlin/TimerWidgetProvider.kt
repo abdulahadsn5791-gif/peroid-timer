@@ -11,7 +11,7 @@ import android.widget.RemoteViews
  * Chronometer, refreshed at each segment transition (by the alarm receiver)
  * and on widget updates. The system Chronometer ticks itself, so the countdown
  * is live without per-second widget pushes. No schedule logic — just a
- * snapshot lookup.
+ * snapshot lookup. Empty preset (zero segments) shows "No lectures today".
  */
 class TimerWidgetProvider : AppWidgetProvider() {
 
@@ -36,7 +36,13 @@ class TimerWidgetProvider : AppWidgetProvider() {
 
             val views = RemoteViews(context.packageName, R.layout.timer_widget)
             val current = lookup.current
-            if (current != null) {
+            if (snapshot.segments.isEmpty()) {
+                views.setTextViewText(R.id.widget_name, "No lectures today")
+                views.setTextViewText(R.id.widget_countdown, "—")
+                views.setTextViewText(R.id.widget_status, "Enjoy the free day")
+                views.setInt(R.id.widget_progress, "setProgress", 0)
+                views.setInt(R.id.widget_card, "setBackgroundColor", 0xFFF3F4F6.toInt())
+            } else if (current != null) {
                 views.setTextViewText(R.id.widget_name, current.name)
                 setCountdown(views, current.endUnixSec, lookup.now)
                 val pct = remainingPercent(current, lookup.now)

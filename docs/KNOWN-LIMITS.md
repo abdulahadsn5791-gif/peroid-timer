@@ -2,6 +2,15 @@
 
 Honest scope so nobody discovers these the hard way.
 
+## Weekly presets & empty days
+- Every weekday has its own period list (Settings → weekday tabs). An empty
+  preset means "no lectures this day": no countdown, no live notification,
+  no alarms, no sounds — native code treats a zero-segment snapshot as
+  "nothing scheduled" and stays off for the whole day.
+- Existing single-timetable installs migrate to "every day", so nothing
+  disappears after an upgrade. Use **Copy to all days** / **Clear this day**
+  to reshape the week quickly.
+
 ## Live progress notification (Android)
 - Android provides an ongoing public notification with a real **progress bar**
   + chronometer countdown, delivered by the `PeriodForegroundService`
@@ -13,6 +22,30 @@ Honest scope so nobody discovers these the hard way.
   and is never shown outside the app.
 - iOS: no lock-screen replacement allowed by Apple; only standard
   notifications. Not implemented in this pass.
+
+## Custom alarm ringtone
+- **Choose** a ringtone in Settings → Alarm sound (system audio picker). The
+  file is copied into the app's documents directory, so the selection survives
+  restarts and cache clears.
+- The alarm fires natively (exact alarm → notification on the alarm channel
+  with `USAGE_ALARM` audio), so it rings **even when the app is closed** and
+  on the lock screen. If the picked file is ever deleted by the system, the
+  platform default alarm sound plays instead — the alarm never goes silent.
+
+## Play Protect / "harmful app" flag
+The flag was caused by a legacy permission combination, not by any behaviour:
+- The manifest now declares `USE_EXACT_ALARM` (the policy-approved way for
+  alarm-clock apps to get exact alarms on Android 13+) and keeps the legacy
+  `SCHEDULE_EXACT_ALARM` only up to Android 12L (`maxSdkVersion=32`), where it
+  needs no user toggle and no Play declaration.
+- `VIBRATE` was added explicitly (vibration without it is flagged).
+- The boot receiver had to stay exported for the system `BOOT_COMPLETED`
+  broadcast; the custom re-schedule action is now gated so foreign apps can
+  not spoof it.
+- Rebuild with `bunx expo prebuild` after this change and **ship a new
+  versionCode** — old installed builds keep their old manifest. If Play
+  Protect still warns over an APK from an unknown source, it is the
+  "unknown apps" install path, not the app; a Play listing removes it.
 
 ## Battery / background execution
 Android vendors aggressively kill background work. If notifications go stale:

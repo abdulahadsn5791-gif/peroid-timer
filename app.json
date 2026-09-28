@@ -2,7 +2,7 @@
   "expo": {
     "name": "Period Timer",
     "slug": "period-timer",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.periodtimer",
+      "versionCode": 10100,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,6 +33,12 @@
       "expo-dev-client",
       "expo-notifications",
       "@react-native-community/datetimepicker",
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
       "./plugins/withPeriodTimerAndroid.js",
       "expo-asset"
     ]

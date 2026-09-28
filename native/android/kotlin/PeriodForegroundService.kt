@@ -14,6 +14,9 @@ import android.os.PowerManager
  * is running or upcoming it republishes a Google Maps-style notification every
  * second with a real progress bar; it stops itself the moment the day is over.
  * All "what is true at time T" values come from the snapshot the app writes.
+ *
+ * Empty preset (weekday with no lectures): the snapshot has zero segments, so
+ * the service stops immediately and stays off — no notification that day.
  */
 class PeriodForegroundService : Service() {
 
@@ -34,12 +37,13 @@ class PeriodForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val snapshot = SnapshotStore.load(this)
-        val startupNotification = if (snapshot != null) {
-            val lookup = SnapshotStore.lookup(snapshot, System.currentTimeMillis() / 1000L)
-            OngoingNotifier.compose(this, snapshot, lookup)
-        } else {
-            buildPlaceholder()
+        if (snapshot == null || snapshot.segments.isEmpty()) {
+            // Nothing scheduled (empty preset day or no snapshot yet): stop quietly.
+            stopSelfAndClear()
+            return START_NOT_STICKY
         }
+        val lookup = SnapshotStore.lookup(snapshot, System.currentTimeMillis() / 1000L)
+        val startupNotification = OngoingNotifier.compose(this, snapshot, lookup)
         startForeground(OngoingNotifier.NOTIFICATION_ID, startupNotification)
         if (!handler.hasCallbacks(tick)) handler.postDelayed(tick, 0L)
         return START_STICKY
@@ -52,7 +56,7 @@ class PeriodForegroundService : Service() {
 
     private fun onTick() {
         val snapshot = SnapshotStore.load(this)
-        if (snapshot == null) {
+        if (snapshot == null || snapshot.segments.isEmpty()) {
             stopSelfAndClear()
             return
         }
@@ -75,18 +79,5 @@ class PeriodForegroundService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         OngoingNotifier.clear(this)
         stopSelf()
-    }
-
-    private fun buildPlaceholder(): Notification {
-        return androidx.core.app.NotificationCompat.Builder(this, OngoingNotifier.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Period timer")
-            .setContentText("Setting up today's schedule…")
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
-            .setCategory(androidx.core.app.NotificationCompat.CATEGORY_ALARM)
-            .setColor(0xFF2563EB.toInt())
-            .build()
     }
 }

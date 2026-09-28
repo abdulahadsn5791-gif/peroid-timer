@@ -1,9 +1,16 @@
-import { defaultPeriods, type Period } from "./Period";
+import { type Period } from "./Period";
+import {
+  defaultWeekSchedule,
+  normalizeWeekSchedule,
+  weekScheduleEveryDay,
+  type WeekSchedule,
+} from "./WeekSchedule";
 import { DEFAULT_ACCENT, normalizeAccentColor, type AccentColor } from "../value-objects/AccentColor";
 import { paletteAt } from "../value-objects/RingPalette";
 
 export interface Settings {
-  periods: Period[];
+  /** One period list per weekday; an empty list = no lectures that day. */
+  weekSchedule: WeekSchedule;
   accentColor: AccentColor;
   paletteIndex: number;
   colorClock: boolean;
@@ -11,12 +18,17 @@ export interface Settings {
   colorActiveBars: boolean;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
+  /** Custom alarm ringtone (file/content URI); null = the built-in tone. */
+  alarmSoundUri: string | null;
   wallpaperBlur: number;
   wallpaperUri: string | null;
-  lastNotifiedPeriodId: string | null;
+  /** "weekday:periodId" of the last fired end-of-period alert (per-day dedupe). */
+  lastNotifiedKey: string | null;
 }
 
 export interface SettingsShape {
+  weekSchedule?: WeekSchedule;
+  /** Legacy single-list shape; still accepted and applied to every day. */
   periods?: Period[];
   accentColor?: AccentColor;
   paletteIndex?: number;
@@ -25,14 +37,27 @@ export interface SettingsShape {
   colorActiveBars?: boolean;
   soundEnabled?: boolean;
   notificationsEnabled?: boolean;
+  alarmSoundUri?: string | null;
   wallpaperBlur?: number;
   wallpaperUri?: string | null;
-  lastNotifiedPeriodId?: string | null;
+  lastNotifiedKey?: string | null;
+}
+
+/**
+ * Only file/content URIs are accepted as alarm sounds; anything else (a stale
+ * cache path, a web url, garbage) falls back to the built-in tone so a broken
+ * ringtone can never silence the alarm.
+ */
+function normalizeAlarmSoundUri(uri: string | null | undefined): string | null {
+  if (typeof uri !== "string") return null;
+  const trimmed = uri.trim();
+  if (trimmed.startsWith("file://") || trimmed.startsWith("content://")) return trimmed;
+  return null;
 }
 
 export function defaultSettings(): Settings {
   return {
-    periods: defaultPeriods(),
+    weekSchedule: defaultWeekSchedule(),
     accentColor: DEFAULT_ACCENT,
     paletteIndex: 0,
     colorClock: false,
@@ -40,16 +65,22 @@ export function defaultSettings(): Settings {
     colorActiveBars: true,
     soundEnabled: true,
     notificationsEnabled: true,
+    alarmSoundUri: null,
     wallpaperBlur: 0,
     wallpaperUri: null,
-    lastNotifiedPeriodId: null,
+    lastNotifiedKey: null,
   };
 }
 
 export function settingsWith(overrides: SettingsShape): Settings {
   const base = defaultSettings();
+  const weekSchedule = overrides.weekSchedule
+    ? normalizeWeekSchedule(overrides.weekSchedule)
+    : overrides.periods
+      ? weekScheduleEveryDay(overrides.periods)
+      : base.weekSchedule;
   return {
-    periods: overrides.periods ?? base.periods,
+    weekSchedule,
     accentColor: normalizeAccentColor(overrides.accentColor ?? base.accentColor),
     paletteIndex: overrides.paletteIndex ?? base.paletteIndex,
     colorClock: overrides.colorClock ?? base.colorClock,
@@ -57,9 +88,10 @@ export function settingsWith(overrides: SettingsShape): Settings {
     colorActiveBars: overrides.colorActiveBars ?? base.colorActiveBars,
     soundEnabled: overrides.soundEnabled ?? base.soundEnabled,
     notificationsEnabled: overrides.notificationsEnabled ?? base.notificationsEnabled,
+    alarmSoundUri: normalizeAlarmSoundUri(overrides.alarmSoundUri ?? base.alarmSoundUri),
     wallpaperBlur: clampBlur(overrides.wallpaperBlur ?? base.wallpaperBlur),
     wallpaperUri: overrides.wallpaperUri ?? base.wallpaperUri,
-    lastNotifiedPeriodId: overrides.lastNotifiedPeriodId ?? base.lastNotifiedPeriodId,
+    lastNotifiedKey: overrides.lastNotifiedKey ?? base.lastNotifiedKey,
   };
 }
 

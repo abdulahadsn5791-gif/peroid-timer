@@ -9,6 +9,7 @@ import { MmkvSettingsRepository } from "@adapters/outbound/storage/MmkvSettingsR
 import { FileWallpaperStore } from "@adapters/outbound/wallpaper/FileWallpaperStore";
 import { ExpoImagePicker } from "@adapters/outbound/image-picker/ExpoImagePicker";
 import { ExpoAudioPlayer } from "@adapters/outbound/audio/ExpoAudioPlayer";
+import { DocumentPickerSoundPicker } from "@adapters/outbound/sound-picker/SoundPicker";
 import { NativeAlertScheduler } from "@adapters/outbound/notifications/NativeAlertScheduler";
 import { FileSnapshotWriter } from "@adapters/outbound/lock-screen/FileSnapshotWriter";
 import {
@@ -32,6 +33,15 @@ import {
   PreviewWallpaperBlurUseCase,
 } from "@application/use-cases/PreviewUseCases";
 import { DraftPeriodsUseCase } from "@application/use-cases/DraftPeriodsUseCase";
+import {
+  SetWeekdayUseCase,
+  ClearDayUseCase,
+  CopyToAllDaysUseCase,
+} from "@application/use-cases/WeeklyScheduleUseCases";
+import {
+  PickAlarmSoundUseCase,
+  ClearAlarmSoundUseCase,
+} from "@application/use-cases/AlarmSoundUseCases";
 import { PickWallpaperUseCase, RemoveWallpaperUseCase } from "@application/use-cases/WallpaperUseCases";
 import { SaveSettingsUseCase } from "@application/use-cases/SaveSettingsUseCase";
 import { CloseSettingsUseCase } from "@application/use-cases/CloseSettingsUseCase";
@@ -52,8 +62,10 @@ export class PeriodTimerApp implements AppDeps {
   private readonly subscribeDraftRef: (listener: () => void) => () => void;
   private readonly clock: SystemClock;
   private readonly applyPlan: ApplyBackgroundPlanUseCase;
+  private readonly audio: ExpoAudioPlayer;
   private refreshListeners = new Set<() => void>();
   private lastBoundary = 0;
+  private lastSoundUri: string | null | undefined = undefined;
 
   constructor(deps: {
     getHomeView: () => HomeView;
@@ -65,6 +77,7 @@ export class PeriodTimerApp implements AppDeps {
     checkPeriodEnd: () => Promise<PeriodEndTickResult>;
     clock: SystemClock;
     applyPlan: ApplyBackgroundPlanUseCase;
+    audio: ExpoAudioPlayer;
   }) {
     this.getHomeView = deps.getHomeView;
     this.openSettings = deps.openSettings;
@@ -75,6 +88,7 @@ export class PeriodTimerApp implements AppDeps {
     this.checkPeriodEnd = deps.checkPeriodEnd;
     this.clock = deps.clock;
     this.applyPlan = deps.applyPlan;
+    this.audio = deps.audio;
   }
 
   settingsIsOpen(): boolean {
@@ -122,6 +136,7 @@ export function createApp(): AppDeps {
   const wallpaperStore = new FileWallpaperStore();
   const imagePicker = new ExpoImagePicker();
   const sound = new ExpoAudioPlayer();
+  const soundPicker = new DocumentPickerSoundPicker();
   const alerts = new NativeAlertScheduler();
   const snapshot = new FileSnapshotWriter();
 
@@ -139,12 +154,24 @@ export function createApp(): AppDeps {
   const previewWallpaperBlur = new PreviewWallpaperBlurUseCase(draftStore, wallpaperStore);
   const previewNotifications = new PreviewNotificationsUseCase(draftStore, wallpaperStore);
   const periods = new DraftPeriodsUseCase(draftStore, wallpaperStore);
+  const setWeekday = new SetWeekdayUseCase(draftStore, wallpaperStore);
+  const clearDay = new ClearDayUseCase(draftStore, wallpaperStore);
+  const copyToAllDays = new CopyToAllDaysUseCase(draftStore, wallpaperStore);
+  const pickAlarmSound = new PickAlarmSoundUseCase(soundPicker, draftStore, wallpaperStore);
+  const clearAlarmSound = new ClearAlarmSoundUseCase(draftStore, wallpaperStore);
   const pickWallpaper = new PickWallpaperUseCase(imagePicker, wallpaperStore, draftStore);
   const removeWallpaper = new RemoveWallpaperUseCase(wallpaperStore, draftStore);
   const saveSettings = new SaveSettingsUseCase(settingsRepository, wallpaperStore, draftStore, planner);
   const closeSettings = new CloseSettingsUseCase(wallpaperStore, draftStore);
   const checkPeriodEnd = new CheckForPeriodEndUseCase(clock, settingsRepository, sound);
   const applyPlan = new ApplyBackgroundPlanUseCase(settingsRepository, planner, sound);
+
+  // Keep the JS-side audio player on the committed ringtone (in-app alerts);
+  // the native alarm uses the same URI from the snapshot (closed-app alerts).
+  const initialSettings = settingsRepository.load();
+  if ("setCustomSource" in sound) {
+    (sound as { setCustomSource(uri: string | null): void }).setCustomSource(initialSettings.alarmSoundUri);
+  }
 
   const settingsActions: SettingsActions = {
     previewPalette: (i) => void previewPalette.preview(i),
@@ -160,6 +187,21 @@ export function createApp(): AppDeps {
     moveDown: (i) => void periods.moveDown(i),
     remove: (i) => void periods.remove(i),
     addPeriod: () => void periods.addDefault(),
+    setWeekday: (w) => void setWeekday.setWeekday(w),
+    clearDay: () => void clearDay.clearDay(),
+    copyToAllDays: () => void copyToAllDays.copyToAllDays(),
+    pickAlarmSound: () =>
+      void pickAlarmSound.pick().then((vm) => {
+        if ("setCustomSource" in sound) {
+          (sound as { setCustomSource(uri: string | null): void }).setCustomSource(vm.alarmSoundUri);
+        }
+      }),
+    clearAlarmSound: () => {
+      void clearAlarmSound.clear();
+      if ("setCustomSource" in sound) {
+        (sound as { setCustomSource(uri: string | null): void }).setCustomSource(null);
+      }
+    },
     pickWallpaper: () => pickWallpaper.pick().then(() => undefined),
     removeWallpaper: () => void removeWallpaper.removeWallpaper(),
     save: () => saveSettings.save(),
@@ -176,5 +218,6 @@ export function createApp(): AppDeps {
     checkPeriodEnd: () => checkPeriodEnd.tick(),
     clock,
     applyPlan,
+    audio: sound,
   });
 }

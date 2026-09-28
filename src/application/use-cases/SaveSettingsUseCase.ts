@@ -19,8 +19,8 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
       await this.planner.apply(this.settingsRepository.load());
       return;
     }
-    if (draft.periods.length === 0) {
-      throw new Error("At least one period is required.");
+    if (!draft.weekSchedule.some((day) => day.length > 0)) {
+      throw new Error("At least one day needs at least one period.");
     }
 
     const hasPreview = this.wallpaperStore.hasPreview();
@@ -36,7 +36,7 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
     }
 
     const next = normalizeSettings({
-      periods: draft.periods,
+      weekSchedule: draft.weekSchedule,
       accentColor: draft.accentColor,
       paletteIndex: draft.paletteIndex,
       colorClock: draft.colorClock,
@@ -44,9 +44,10 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
       colorActiveBars: draft.colorActiveBars,
       soundEnabled: draft.soundEnabled,
       notificationsEnabled: draft.notificationsEnabled,
+      alarmSoundUri: draft.alarmSoundUri,
       wallpaperBlur: draft.wallpaperBlur,
       wallpaperUri: storedUri,
-      lastNotifiedPeriodId: this.settingsRepository.load().lastNotifiedPeriodId,
+      lastNotifiedKey: this.settingsRepository.load().lastNotifiedKey,
     });
 
     this.settingsRepository.save(next);

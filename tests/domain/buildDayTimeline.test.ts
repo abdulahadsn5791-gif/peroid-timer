@@ -6,17 +6,19 @@ import { paletteAt } from "@domain/value-objects/RingPalette";
 const BOUNDARY = 1_800_000_000; // arbitrary local midnight epoch sec
 const NOW = BOUNDARY + 8 * 3600 + 45 * 60; // 08:45
 
-describe("buildDayTimeline (snapshot v4)", () => {
+describe("buildDayTimeline (snapshot v5)", () => {
   test("maps periods to absolute epoch segments with thresholds + duration as data", () => {
     const settings = settingsWith({});
-    const tl: DayTimeline = buildDayTimeline(settings, BOUNDARY, NOW);
+    const tl: DayTimeline = buildDayTimeline(settings, BOUNDARY, NOW, 3);
 
-    expect(tl.version).toBe(4);
+    expect(tl.version).toBe(5);
+    expect(tl.weekday).toBe(3);
     expect(tl.boundaryUnixSec).toBe(BOUNDARY);
     expect(tl.generatedAtUnixSec).toBe(NOW);
     expect(tl.accentHex).toBe(settings.accentColor);
     expect(tl.soundEnabled).toBe(true);
     expect(tl.colorNotification).toBe(false);
+    expect(tl.alarmSoundUri).toBeNull();
     expect(tl.segments).toHaveLength(4);
 
     const first = tl.segments[0];
@@ -30,10 +32,11 @@ describe("buildDayTimeline (snapshot v4)", () => {
   });
 
   test("serializes to plain JSON the native side can parse", () => {
-    const tl = buildDayTimeline(settingsWith({}), BOUNDARY, NOW);
+    const tl = buildDayTimeline(settingsWith({}), BOUNDARY, NOW, 3);
     const roundTrip = JSON.parse(JSON.stringify(tl)) as DayTimeline;
     expect(roundTrip.segments[0].startUnixSec).toBe(tl.segments[0].startUnixSec);
     expect(roundTrip.segments[0].durationSec).toBe(tl.segments[0].durationSec);
     expect(roundTrip.segments[0].colors).toEqual(tl.segments[0].colors);
+    expect(roundTrip.weekday).toBe(3);
   });
 });

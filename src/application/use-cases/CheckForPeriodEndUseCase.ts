@@ -1,4 +1,5 @@
 import { normalizeSettings } from "@domain/entities/Settings";
+import { periodsFor } from "@domain/entities/WeekSchedule";
 import { periodJustEnded } from "@domain/services/periodEnd";
 import type { PeriodEndTickResult } from "@application/ports/view-models/ViewModels";
 import type { CheckForPeriodEndPort } from "@application/ports/inbound/BackgroundPorts";
@@ -16,12 +17,14 @@ export class CheckForPeriodEndUseCase implements CheckForPeriodEndPort {
   async tick(): Promise<PeriodEndTickResult> {
     const settings = normalizeSettings(this.settingsRepository.load());
     const now = this.clock.now();
-    const event = periodJustEnded(settings.periods, now.secondsOfDay, settings.lastNotifiedPeriodId);
+    const weekday = this.clock.todayParts().weekday;
+    const today = periodsFor(settings.weekSchedule, weekday);
+    const event = periodJustEnded(today, now.secondsOfDay, settings.lastNotifiedKey, weekday);
     if (!event) return { justEnded: false, periodName: null };
     if (settings.soundEnabled) {
       await this.sound.playEndSound();
     }
-    this.settingsRepository.save({ ...settings, lastNotifiedPeriodId: event.periodId });
+    this.settingsRepository.save({ ...settings, lastNotifiedKey: event.notifyKey });
     return { justEnded: true, periodName: event.periodName };
   }
 }

@@ -9,6 +9,11 @@ import type { DayTimeline } from "@domain/services/buildDayTimeline";
  */
 export interface AlertSchedulerPort {
   scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>;
+  /**
+   * Arms one exact alarm per period end that fires the alarm-ringtone
+   * notification natively — it rings even when the app process is dead.
+   */
+  scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void>;
   startLiveNotification(): Promise<void>;
   stopLiveNotification(): Promise<void>;
   hasExactAlarmAccess(): Promise<boolean>;

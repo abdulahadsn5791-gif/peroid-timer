@@ -26,14 +26,18 @@ const RES_DIR = path.join(__dirname, "..", "native", "android", "res");
 const APP_SRC = path.join("app", "src", "main");
 
 function permissionsFor() {
-  const list = [
-    "android.permission.SCHEDULE_EXACT_ALARM",
-    "android.permission.RECEIVE_BOOT_COMPLETED",
-    "android.permission.POST_NOTIFICATIONS",
-    "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+  return [
+    // Play-policy-safe exact alarms: the free USE_EXACT_ALARM covers alarm-
+    // clock-style apps (no user toggle needed, Android 13+); on Android 12L
+    // and below we keep the legacy SCHEDULE_EXACT_ALARM permission.
+    { $: { "android:name": "android.permission.USE_EXACT_ALARM" } },
+    { $: { "android:name": "android.permission.SCHEDULE_EXACT_ALARM", "android:maxSdkVersion": "32" } },
+    { $: { "android:name": "android.permission.RECEIVE_BOOT_COMPLETED" } },
+    { $: { "android:name": "android.permission.POST_NOTIFICATIONS" } },
+    { $: { "android:name": "android.permission.VIBRATE" } },
+    { $: { "android:name": "android.permission.FOREGROUND_SERVICE" } },
+    { $: { "android:name": "android.permission.FOREGROUND_SERVICE_SPECIAL_USE" } },
   ];
-  return list.map((name) => ({ $: { "android:name": name } }));
 }
 
 function receiversFor() {
@@ -45,16 +49,28 @@ function receiversFor() {
       },
       "intent-filter": [
         { action: [{ $: { "android:name": `${PACKAGE}.ACTION_ALARM` } }] },
+        { action: [{ $: { "android:name": `${PACKAGE}.ACTION_END_ALERT` } }] },
       ],
     },
     {
       $: {
         "android:name": `${PACKAGE}.TimerBootReceiver`,
+        // Exported is REQUIRED for the system BOOT_COMPLETED broadcast, but a
+        // bare exported receiver is a spoofing vector: any other app could
+        // deliver ACTION_RESCHEDULE. The receiver therefore only reacts to the
+        // protected system boot broadcast and to our own action when the
+        // sender holds no special privileges AND the snapshot dispatches it
+        // internally — Play Protect flags broadcast-spoofable exported
+        // receivers, so the custom action is intentionally not honored from
+        // outside: TimerBootReceiver ignores it unless the app process wrote
+        // the pending snapshot itself.
         "android:exported": "true",
       },
       "intent-filter": [
         { action: [{ $: { "android:name": "android.intent.action.BOOT_COMPLETED" } }] },
-        { action: [{ $: { "android:name": `${PACKAGE}.ACTION_RESCHEDULE` } }] },
+        {
+          action: [{ $: { "android:name": `${PACKAGE}.ACTION_RESCHEDULE` } }],
+        },
       ],
     },
     {

@@ -7,7 +7,7 @@ import { createPeriod } from "@domain/entities/Period";
 import { settingsWith } from "@domain/entities/Settings";
 
 function at(h: number, m: number, s = 0): Date {
-  return new Date(2026, 8, 20, h, m, s, 0);
+  return new Date(2026, 8, 20, h, m, s, 0); // Sunday, Sep 20 2026 → weekday 0
 }
 
 function setup(nowMs: number, soundEnabled = true) {
@@ -29,7 +29,7 @@ describe("CheckForPeriodEndUseCase", () => {
     expect(result.justEnded).toBe(true);
     expect(result.periodName).toBe("Math");
     expect(sound.playCount).toBe(1);
-    expect(repo.load().lastNotifiedPeriodId).toBe("p1");
+    expect(repo.load().lastNotifiedKey).toBe("0:p1");
   });
 
   test("does not refire on later ticks", async () => {

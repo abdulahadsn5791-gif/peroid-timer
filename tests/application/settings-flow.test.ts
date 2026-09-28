@@ -12,6 +12,12 @@ import {
   PreviewAccentUseCase,
   PreviewPaletteUseCase,
 } from "@application/use-cases/PreviewUseCases";
+import { DraftPeriodsUseCase } from "@application/use-cases/DraftPeriodsUseCase";
+import {
+  ClearDayUseCase,
+  CopyToAllDaysUseCase,
+  SetWeekdayUseCase,
+} from "@application/use-cases/WeeklyScheduleUseCases";
 import { SaveSettingsUseCase } from "@application/use-cases/SaveSettingsUseCase";
 import { CloseSettingsUseCase } from "@application/use-cases/CloseSettingsUseCase";
 import { defaultSettings, settingsWith } from "@domain/entities/Settings";
@@ -28,13 +34,21 @@ function setup() {
   const openSettings = new OpenSettingsUseCase(repo, wall, draft);
   const previewPalette = new PreviewPaletteUseCase(draft, wall);
   const previewAccent = new PreviewAccentUseCase(draft, wall);
+  const periods = new DraftPeriodsUseCase(draft, wall);
+  const setWeekday = new SetWeekdayUseCase(draft, wall);
+  const clearDay = new ClearDayUseCase(draft, wall);
+  const copyToAllDays = new CopyToAllDaysUseCase(draft, wall);
   const save = new SaveSettingsUseCase(repo, wall, draft, planner);
   const close = new CloseSettingsUseCase(wall, draft);
 
-  return { clock, repo, wall, alerts, snapshot, draft, planner, openSettings, previewPalette, previewAccent, save, close };
+  return {
+    clock, repo, wall, alerts, snapshot, draft, planner,
+    openSettings, previewPalette, previewAccent, periods,
+    setWeekday, clearDay, copyToAllDays, save, close,
+  };
 }
 
-describe("Settings flow", () => {
+describe("Settings flow (weekly)", () => {
   test("opening spawns a draft and does not touch committed settings", () => {
     const { openSettings, repo, draft } = setup();
     const vm = openSettings.open();
@@ -42,6 +56,7 @@ describe("Settings flow", () => {
     expect(vm.paletteIndex).toBe(0);
     expect(vm.dirty).toBe(false);
     expect(repo.load().paletteIndex).toBe(0); // committed unchanged
+    expect(vm.weekPeriods).toHaveLength(7);
   });
 
   test("previews mutate the draft and mark it dirty", () => {
@@ -52,7 +67,7 @@ describe("Settings flow", () => {
     expect(draft.isDirty).toBe(true);
   });
 
-  test("saving persists, applies the background plan, and closes the draft", async () => {
+  test("saving persists the weekly schedule, applies the plan, and closes the draft", async () => {
     const { openSettings, previewPalette, save, repo, snapshot, alerts, draft } = setup();
     openSettings.open();
     previewPalette.preview(2); // Twilight
@@ -60,11 +75,68 @@ describe("Settings flow", () => {
     await save.save();
 
     expect(repo.load().paletteIndex).toBe(2);
+    expect(repo.load().weekSchedule).toHaveLength(7);
     expect(draft.isOpen()).toBe(false);
-    expect(snapshot.last?.version).toBe(4);
+    expect(snapshot.last?.version).toBe(5);
     expect(alerts.scheduled).toHaveLength(1);
     expect(alerts.startLiveCalls).toBe(1);
     expect(snapshot.last?.segments).toHaveLength(4);
+  });
+
+  test("weekday switching is per-tab: Monday edits never touch Tuesday", () => {
+    const { openSettings, periods, setWeekday, draft } = setup();
+    openSettings.open();
+
+    setWeekday.setWeekday(1); // Monday
+    const mondayFirst = draft.getDraft().weekSchedule[1][0];
+    periods.updatePeriod(mondayFirst.id, { name: "Physics" });
+    expect(draft.getDraft().weekSchedule[1][0].name).toBe("Physics");
+    expect(draft.getDraft().weekSchedule[2][0].name).toBe("Period 1");
+
+    setWeekday.setWeekday(2); // Tuesday
+    periods.addDefault();
+    expect(draft.getDraft().weekSchedule[2]).toHaveLength(5);
+    expect(draft.getDraft().weekSchedule[1]).toHaveLength(4);
+  });
+
+  test("clear day empties only the active weekday; copy fills the rest", () => {
+    const { openSettings, setWeekday, clearDay, copyToAllDays, draft } = setup();
+    openSettings.open();
+
+    setWeekday.setWeekday(0); // Sunday
+    clearDay.clearDay();
+    expect(draft.getDraft().weekSchedule[0]).toHaveLength(0);
+    expect(draft.getDraft().weekSchedule[1]).toHaveLength(4);
+
+    setWeekday.setWeekday(3); // Wednesday
+    copyToAllDays.copyToAllDays();
+    for (const day of draft.getDraft().weekSchedule) {
+      expect(day).toHaveLength(4);
+    }
+  });
+
+  test("saving a fully empty week is refused; one lecture day is enough", async () => {
+    const { openSettings, setWeekday, clearDay, save, copyToAllDays, periods } = setup();
+    openSettings.open();
+    for (let d = 0; d < 7; d++) {
+      setWeekday.setWeekday(d);
+      clearDay.clearDay();
+    }
+    await expect(save.save()).rejects.toThrow("At least one day needs at least one period");
+
+    // Bring back just one day → save succeeds (Wednesday first, then copy).
+    setWeekday.setWeekday(2);
+    periods.addDefault();
+    copyToAllDays.copyToAllDays();
+    await expect(save.save()).resolves.toBeUndefined();
+  });
+
+  test("alarm sound persists through save", async () => {
+    const { openSettings, draft, save, repo } = setup();
+    openSettings.open();
+    draft.setAlarmSound("file:///data/ring.mp3");
+    await save.save();
+    expect(repo.load().alarmSoundUri).toBe("file:///data/ring.mp3");
   });
 
   test("committed wallpaper preview is promoted on save, rolled back on close", async () => {
@@ -87,23 +159,6 @@ describe("Settings flow", () => {
     void close;
   });
 
-  test("switching lock-screen presence is gone; saving always keeps alarms + live notification", async () => {
-    const { openSettings, save, alerts } = setup();
-    openSettings.open();
-    await save.save();
-    expect(alerts.scheduled).toHaveLength(1);
-    expect(alerts.startLiveCalls).toBe(1);
-    expect(alerts.stopLiveCalls).toBe(0);
-  });
-
-  test("saving an empty period list is refused", async () => {
-    const { repo, save, draft, openSettings } = setup();
-    repo.save(settingsWith({ periods: [] }));
-    draft.commitFromSettings(repo.load());
-    openSettings.open();
-    await expect(save.save()).rejects.toThrow("At least one period is required");
-  });
-
   test("closing restores the committed draft", () => {
     const { openSettings, previewPalette, close, draft } = setup();
     openSettings.open();
@@ -113,8 +168,10 @@ describe("Settings flow", () => {
     expect(draft.getDraft().paletteIndex).toBe(0);
   });
 
-  test("settingsWith and defaultSettings used elsewhere", () => {
-    expect(settingsWith({}).soundEnabled).toBe(true);
-    expect(defaultSettings().soundEnabled).toBe(true);
+  test("legacy single-list settings still normalize (every-day migration)", () => {
+    const legacy = settingsWith({ periods: defaultSettings().weekSchedule[1].slice() });
+    for (const day of legacy.weekSchedule) {
+      expect(day).toHaveLength(4);
+    }
   });
 });

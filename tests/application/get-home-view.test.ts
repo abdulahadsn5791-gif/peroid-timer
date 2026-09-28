@@ -5,9 +5,10 @@ import { InMemoryWallpaperStore } from "../fakes/InMemoryWallpaperStore";
 import { SettingsDraftStore } from "@application/state/SettingsDraftStore";
 import { GetHomeViewUseCase } from "@application/use-cases/GetHomeViewUseCase";
 import { settingsWith } from "@domain/entities/Settings";
+import { weekScheduleFromFactory, defaultWeekSchedule } from "@domain/entities/WeekSchedule";
 
 function minutesIntoDay(h: number, m: number): Date {
-  return new Date(2026, 8, 20, h, m, 0, 0); // a fixed local day
+  return new Date(2026, 8, 20, h, m, 0, 0); // a fixed local day (Sunday)
 }
 
 function setup(
@@ -23,7 +24,7 @@ function setup(
   return { clock, repo, wall, draft, uc };
 }
 
-describe("GetHomeViewUseCase", () => {
+describe("GetHomeViewUseCase (weekly)", () => {
   test("during a period: active ring with remaining time + colored phase", () => {
     const { uc } = setup(minutesIntoDay(9, 30).getTime());
     const view = uc.getHomeView();
@@ -39,6 +40,21 @@ describe("GetHomeViewUseCase", () => {
     expect(current?.name).toBe("Period 2");
     expect(current?.countdownText).not.toBeNull();
     expect(view.todayLabel).toBe("Sunday, September 20");
+    expect(view.weekday).toBe(0);
+    expect(view.isEmptyDay).toBe(false);
+  });
+
+  test("empty preset day shows the no-lectures state with no rows", () => {
+    // Sep 20 2026 is a Sunday (weekday 0): make Sunday empty.
+    const emptySunday = weekScheduleFromFactory((d) => (d === 0 ? [] : defaultWeekSchedule()[d]));
+    const { uc } = setup(minutesIntoDay(9, 30).getTime(), null, settingsWith({ weekSchedule: emptySunday }));
+    const view = uc.getHomeView();
+
+    expect(view.isEmptyDay).toBe(true);
+    expect(view.ring.indicator).toBe("idle");
+    expect(view.ring.periodName).toBe("No lectures today");
+    expect(view.ring.statusText).toBe("Enjoy the free day");
+    expect(view.rows).toHaveLength(0);
   });
 
   test("tight phase shows the phase-2 red", () => {
@@ -76,7 +92,7 @@ describe("GetHomeViewUseCase", () => {
     repo.save(settingsWith({ periods: [] }));
     const view = uc.getHomeView();
     expect(view.ring.indicator).toBe("idle");
-    expect(view.ring.periodName).toBe("No periods set up");
+    expect(view.ring.periodName).toBe("No lectures today");
   });
 
   test("color-clock ON colors phase-0 numbers; OFF keeps them neutral", () => {

@@ -1,5 +1,6 @@
 import type { Settings } from "../entities/Settings";
 import type { Period } from "../entities/Period";
+import { periodsFor, weekdayOf } from "../entities/WeekSchedule";
 import type { PhaseColors } from "../value-objects/PhaseColor";
 import { DEFAULT_PHASE_THRESHOLDS } from "../value-objects/PhaseColor";
 import { paletteAt } from "../value-objects/RingPalette";
@@ -11,6 +12,11 @@ import { toSeconds, minutesOfDayToLabel } from "../value-objects/TimeOfDay";
  * Thresholds, durations, colors and labels travel as data so native code never
  * re-derives rules; the only arithmetic it performs is the time-relative piece
  * (remaining fraction at a given moment).
+ *
+ * Weekly timetables: the snapshot is always for ONE resolved day. `segments`
+ * is empty exactly when that weekday has no lectures (an "empty preset") —
+ * native then skips transition alarms and the live notification entirely, so
+ * an empty day never beeps or buzzes.
  */
 export interface DayTimelineSegment {
   id: string;
@@ -26,12 +32,16 @@ export interface DayTimelineSegment {
 }
 
 export interface DayTimeline {
-  version: 4;
+  version: 5;
   generatedAtUnixSec: number;
   boundaryUnixSec: number;
+  /** 0 = Sunday … 6 = Saturday — the weekday this snapshot is for. */
+  weekday: number;
   accentHex: string;
   soundEnabled: boolean;
   colorNotification: boolean;
+  /** Custom alarm ringtone (file/content URI); null/absent = built-in tone. */
+  alarmSoundUri: string | null;
   segments: DayTimelineSegment[];
 }
 
@@ -44,9 +54,12 @@ export function buildDayTimeline(
   settings: Settings,
   boundaryUnixSec: number,
   nowEpochSec: number,
+  weekday?: number,
 ): DayTimeline {
+  const resolvedWeekday = weekday ?? weekdayOf(new Date(nowEpochSec * 1000).getDay());
+  const periods = periodsFor(settings.weekSchedule, resolvedWeekday);
   const palette = paletteAt(settings.paletteIndex);
-  const segments: DayTimelineSegment[] = settings.periods.map((p: Period) => {
+  const segments: DayTimelineSegment[] = periods.map((p: Period) => {
     const startMinutes = p.start.minutes;
     const endMinutes = p.end.minutes;
     const startUnixSec = boundaryUnixSec + startMinutes * 60;
@@ -66,12 +79,14 @@ export function buildDayTimeline(
   });
 
   return {
-    version: 4,
+    version: 5,
     generatedAtUnixSec: nowEpochSec,
     boundaryUnixSec,
+    weekday: resolvedWeekday,
     accentHex: settings.accentColor,
     soundEnabled: settings.soundEnabled,
     colorNotification: settings.colorNotification,
+    alarmSoundUri: settings.alarmSoundUri ?? null,
     segments,
   };
 }

@@ -11,7 +11,10 @@ counting on the lock screen and a home-screen widget.
   by exact alarms so it survives the screen turning off
 - **Home-screen widget** — next period and time remaining at a glance
 - **Reboot-surviving** — alarms are rescheduled after a restart
-- **Editable timetable** — rename periods and set your own start/end times
+- **Editable weekly timetable** — one preset per weekday; an empty day means
+  "no lectures" and the app stays completely silent
+- **Custom alarm ringtone** — pick any audio file; it rings natively even when
+  the app is closed, with the built-in tone as fallback
 - **Theming** — accent colour, ring palettes, and optional colour for the clock,
   notification and active bars
 - **Offline** — everything stays on the phone (MMKV), no account, no network
@@ -19,8 +22,9 @@ counting on the lock screen and a home-screen widget.
 
 Built with Expo SDK 57 / React Native 0.86 on the New Architecture.
 
-> The app ships with four sample periods (08:30–11:25). Change the names and
-> times in **Settings** to match your own timetable.
+> The app ships with four sample periods (08:30–11:25) on every day. Open
+> **Settings** to give each weekday its own preset — clear the days you have
+> no lectures and the timer, alarms and notifications switch off for them.
 
 ## Get the app
 

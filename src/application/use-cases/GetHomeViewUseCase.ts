@@ -1,5 +1,6 @@
 import { normalizeSettings } from "@domain/entities/Settings";
 import type { Period } from "@domain/entities/Period";
+import { periodsFor } from "@domain/entities/WeekSchedule";
 import { computeStatus } from "@domain/services/computeStatus";
 import { phaseFor } from "@domain/services/phaseFor";
 import { phaseColor } from "@domain/services/phaseColor";
@@ -28,25 +29,37 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
   getHomeView(): HomeView {
     const committed = normalizeSettings(this.settingsRepository.load());
     const overrides = this.draftStore.effectiveOverrides();
-    const settings = overrides
-      ? { ...committed, ...overrides }
-      : committed;
+    const settings = overrides ? { ...committed, ...overrides } : committed;
 
     const palette: RingPalette = paletteAt(settings.paletteIndex);
     const now = this.clock.now();
+    const weekday = this.clock.todayParts().weekday;
     const seconds = now.secondsOfDay;
     const minutes = now.minutesOfDay;
 
     const storedWallpaper = overrides ? overrides.wallpaperUri : this.wallpaperStore.getStoredUri();
     const hasWallpaper = storedWallpaper != null;
 
-    const { currentIdx, nextIdx } = computeStatus(minutes, settings.periods);
+    const today = periodsFor(settings.weekSchedule, weekday);
+    const { currentIdx, nextIdx } = computeStatus(minutes, today);
 
     let ring: RingViewModel;
     let rows: ScheduleRowViewModel[];
 
-    if (currentIdx !== -1 && settings.periods[currentIdx]) {
-      const p = settings.periods[currentIdx];
+    if (today.length === 0) {
+      ring = {
+        periodName: "No lectures today",
+        timeText: "--:--",
+        statusText: "Enjoy the free day",
+        showHours: false,
+        ringHex: settings.accentColor,
+        clockHex: null,
+        progressElapsed: 0,
+        indicator: "idle",
+      };
+      rows = [];
+    } else if (currentIdx !== -1 && today[currentIdx]) {
+      const p = today[currentIdx];
       const startSec = p.start.minutes * 60;
       const endSec = p.end.minutes * 60;
       const remaining = Math.max(0, endSec - seconds);
@@ -67,7 +80,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         indicator: "active",
       };
 
-      rows = this.buildRows(settings.periods, minutes, palette, (id) =>
+      rows = this.buildRows(today, minutes, palette, (id) =>
         id === p.id
           ? {
               countdownText: duration.text,
@@ -77,12 +90,12 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
             }
           : null,
       );
-    } else if (nextIdx !== -1 && settings.periods[nextIdx]) {
-      const np = settings.periods[nextIdx];
+    } else if (nextIdx !== -1 && today[nextIdx]) {
+      const np = today[nextIdx];
       const startSec = np.start.minutes * 60;
       const untilStart = Math.max(0, startSec - seconds);
       const prevEndSec =
-        nextIdx > 0 ? settings.periods[nextIdx - 1].end.minutes * 60 : startSec - 1800;
+        nextIdx > 0 ? today[nextIdx - 1].end.minutes * 60 : startSec - 1800;
       const span = Math.max(60, startSec - prevEndSec);
       const remainingFraction = Math.max(0, Math.min(1, untilStart / span));
       const phaseZero = hex0(palette);
@@ -102,23 +115,25 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         indicator: "between",
       };
 
-      rows = this.buildRows(settings.periods, minutes, palette, () => null);
+      rows = this.buildRows(today, minutes, palette, () => null);
     } else {
       ring = {
-        periodName: settings.periods.length ? "All periods complete" : "No periods set up",
+        periodName: "All periods complete",
         timeText: "--:--",
-        statusText: settings.periods.length ? "See you tomorrow" : "Add one in settings",
+        statusText: "See you tomorrow",
         showHours: false,
         ringHex: settings.accentColor,
         clockHex: null,
         progressElapsed: 0,
         indicator: "idle",
       };
-      rows = this.buildRows(settings.periods, minutes, palette, () => null);
+      rows = this.buildRows(today, minutes, palette, () => null);
     }
 
     return {
       todayLabel: todayLabel(this.clock.todayParts()),
+      weekday,
+      isEmptyDay: today.length === 0,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
       colorActiveBars: settings.colorActiveBars,

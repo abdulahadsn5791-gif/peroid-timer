@@ -41,6 +41,8 @@ interface Props {
   sceneBlur: RefObject<RNView | null>;
 }
 
+const WEEKDAY_TABS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 /**
  * Settings sheet grown as frosted glass over the live app instead of a Modal,
  * so the blur samples the actual scene on Android too. Rendered in-window above
@@ -127,7 +129,7 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
     [isWide],
   );
 
-  if (!visible) return null;
+  const dayPeriods = draft.periods;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay} pointerEvents="box-none">
@@ -152,6 +154,58 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
               contentContainerStyle={styles.scrollContent}
             >
               <Text style={styles.sheetTitle}>Schedule settings</Text>
+
+              <SectionLabel>Weekly timetable — every day has its own preset</SectionLabel>
+              <View style={styles.weekdayRow}>
+                {WEEKDAY_TABS.map((label, index) => {
+                  const active = index === draft.weekday;
+                  const count = draft.weekPeriods[index]?.length ?? 0;
+                  return (
+                    <PressableScale
+                      key={label}
+                      onPress={() => actions.setWeekday(index)}
+                      haptic="selection"
+                      style={[styles.weekdayTab, active && { backgroundColor: accent }]}
+                      accessibilityRole="tab"
+                      accessibilityLabel={`${label}: ${count} ${count === 1 ? "period" : "periods"}`}
+                    >
+                      <Text style={[styles.weekdayTabText, active && styles.weekdayTabTextActive]}>{label}</Text>
+                      <View
+                        style={[
+                          styles.weekdayDot,
+                          count === 0 && styles.weekdayDotEmpty,
+                          count > 0 && { backgroundColor: active ? tokens.color.white : accent },
+                        ]}
+                      />
+                    </PressableScale>
+                  );
+                })}
+              </View>
+              {dayPeriods.length === 0 ? (
+                <Hint>
+                  {WEEKDAY_TABS[draft.weekday]} has no lectures — the timer, alarms and notifications
+                  stay off for this day.
+                </Hint>
+              ) : null}
+              <View style={styles.btnRow}>
+                <PressableScale
+                  onPress={() => actions.clearDay()}
+                  haptic="medium"
+                  style={[styles.ghostBtn, styles.btnFlex]}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.ghostBtnText, { color: tokens.color.danger }]}>Clear this day</Text>
+                </PressableScale>
+                <PressableScale
+                  onPress={() => actions.copyToAllDays()}
+                  haptic="selection"
+                  style={[styles.ghostBtn, styles.btnFlex]}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.ghostBtnText}>Copy to all days</Text>
+                </PressableScale>
+              </View>
+              <Hint>Empty preset = a lecture-free day: no countdown, no alarm, no notification.</Hint>
 
               <SectionLabel>App background</SectionLabel>
               <View style={styles.backgroundPreviewRow}>
@@ -298,9 +352,11 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
               </Group>
               <Hint>Watch the live notification on your screen change color with each phase of the current period. Turn on &quot;Color active bars&quot; to light up the ring ticks you have already elapsed.</Hint>
 
-              <SectionLabel>Class periods — set each one's real start and end time</SectionLabel>
+              <SectionLabel>
+                {`${WEEKDAY_TABS[draft.weekday]} periods — set each one's real start and end time`}
+              </SectionLabel>
               <Group>
-                {draft.periods.map((period, index) => (
+                {dayPeriods.map((period, index) => (
                   <Fragment key={period.id}>
                     {index > 0 ? <GroupSeparator /> : null}
                     <PeriodRow
@@ -314,6 +370,12 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
                     />
                   </Fragment>
                 ))}
+                {dayPeriods.length === 0 ? (
+                  <View style={styles.emptyDayBox}>
+                    <Text style={styles.emptyDayText}>No lectures on {WEEKDAY_TABS[draft.weekday]}</Text>
+                    <Text style={styles.emptyDaySub}>Add a period below to schedule this day.</Text>
+                  </View>
+                ) : null}
               </Group>
               <PressableScale onPress={() => actions.addPeriod()} haptic="selection" style={[styles.ghostBtn, styles.addBtn]}>
                 <Text style={[styles.ghostBtnText, { color: tokens.color.text.secondary }]}>+ Add period</Text>
@@ -329,6 +391,43 @@ export function SettingsSheet({ visible, draft, isWide, actions, onDismiss, scen
                 />
               </Group>
               <Hint>Turn off to stop end-of-period and boundary alerts entirely.</Hint>
+
+              <SectionLabel>Alarm sound</SectionLabel>
+              <Group>
+                <View style={styles.toggleRow}>
+                  <View style={styles.ringtoneTextWrap}>
+                    <Text style={styles.toggleLabel}>Custom alarm ringtone</Text>
+                    <Text style={styles.ringtoneValue} numberOfLines={1}>
+                      {draft.alarmSoundUri ? draft.alarmSoundUri.split("/").pop() : "Built-in tone"}
+                    </Text>
+                  </View>
+                  <PressableScale
+                    onPress={() => actions.pickAlarmSound()}
+                    haptic="light"
+                    style={[styles.pickSoundBtn, { borderColor: accent }]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.pickSoundText, { color: accent }]}>Choose</Text>
+                  </PressableScale>
+                </View>
+                {draft.alarmSoundUri ? (
+                  <>
+                    <GroupSeparator />
+                    <View style={styles.toggleRow}>
+                      <Text style={styles.toggleLabel}>Back to built-in tone</Text>
+                      <PressableScale
+                        onPress={() => actions.clearAlarmSound()}
+                        haptic="selection"
+                        style={[styles.pickSoundBtn, { borderColor: tokens.color.hairlineStrong }]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.pickSoundText, { color: tokens.color.danger }]}>Reset</Text>
+                      </PressableScale>
+                    </View>
+                  </>
+                ) : null}
+              </Group>
+              <Hint>The chosen ringtone plays when a period ends — even when the app is closed.</Hint>
 
               <SectionLabel>Sound</SectionLabel>
               <Group>
@@ -646,6 +745,57 @@ const styles = StyleSheet.create({
     color: tokens.color.text.tertiary,
     marginTop: tokens.spacing.sm,
   },
+  weekdayRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: tokens.spacing.xs,
+  },
+  weekdayTab: {
+    flex: 1,
+    minHeight: tokens.tap,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: tokens.color.hairlineStrong,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
+  },
+  weekdayTabText: {
+    fontSize: tokens.text.micro,
+    fontWeight: "600",
+    color: tokens.color.text.secondary,
+  },
+  weekdayTabTextActive: {
+    color: tokens.color.white,
+  },
+  weekdayDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.15)",
+  },
+  weekdayDotEmpty: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.2)",
+  },
+  emptyDayBox: {
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.lg,
+    alignItems: "center",
+    gap: 4,
+  },
+  emptyDayText: {
+    fontSize: tokens.text.subtext,
+    fontWeight: "600",
+    color: tokens.color.text.secondary,
+  },
+  emptyDaySub: {
+    fontSize: tokens.text.micro,
+    color: tokens.color.text.tertiary,
+  },
   group: {
     backgroundColor: "rgba(255,255,255,0.72)",
     borderRadius: tokens.radius.md,
@@ -852,6 +1002,29 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: tokens.color.text.primary,
     flexShrink: 1,
+  },
+  ringtoneTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  ringtoneValue: {
+    fontSize: tokens.text.micro,
+    color: tokens.color.text.tertiary,
+  },
+  pickSoundBtn: {
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: 8,
+    borderRadius: tokens.radius.sm,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    minHeight: tokens.tap,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickSoundText: {
+    fontSize: tokens.text.subtext,
+    fontWeight: "600",
+    color: tokens.color.text.primary,
   },
   periodCard: {
     paddingHorizontal: tokens.spacing.lg,

@@ -4,6 +4,7 @@ import type { GetSettingsDraftPort, OpenSettingsPort } from "@application/ports/
 import type { SettingsRepositoryPort } from "@application/ports/outbound/SettingsRepositoryPort";
 import type { WallpaperStorePort } from "@application/ports/outbound/WallpaperStorePort";
 import { SettingsDraftStore } from "@application/state/SettingsDraftStore";
+import { toHHMM, minutesOfDayToLabel } from "@domain/value-objects/TimeOfDay";
 
 export interface SettingsDraftVmBuilder {
   buildDraftVM(): SettingsDraftVM;
@@ -14,6 +15,16 @@ export function draftVmFromStore(
   wallpaperStore: WallpaperStorePort,
 ): SettingsDraftVM {
   const draft = store.getDraft();
+  const weekPeriods = draft.weekSchedule.map((day) =>
+    day.map((p) => ({
+      id: p.id,
+      name: p.name,
+      start: toHHMM(p.start),
+      end: toHHMM(p.end),
+      startLabel: minutesOfDayToLabel(p.start.minutes),
+      endLabel: minutesOfDayToLabel(p.end.minutes),
+    })),
+  );
   return {
     accentColor: draft.accentColor,
     paletteIndex: draft.paletteIndex,
@@ -25,7 +36,10 @@ export function draftVmFromStore(
     wallpaperBlur: draft.wallpaperBlur,
     wallpaperPreviewUri: draft.wallpaperUri,
     hasWallpaper: draft.wallpaperUri != null,
-    periods: store.toDraftPeriodVM(),
+    weekday: draft.weekday,
+    weekPeriods,
+    periods: weekPeriods[draft.weekday] ?? [],
+    alarmSoundUri: draft.alarmSoundUri,
     dirty: store.isDirty,
   };
 }

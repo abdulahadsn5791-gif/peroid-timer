@@ -33,6 +33,21 @@ class PeriodTimerSchedulerModule(
         return true
     }
 
+    /**
+     * Arms one exact "alarm clock" per period end: on fire, the receiver rings
+     * the alarm ringtone and posts a heads-up notification — even when the app
+     * process is dead. Empty preset (no segments) arms nothing.
+     */
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun scheduleEndOfPeriodAlerts(timelineJson: String?): Boolean {
+        val snapshot = timelineJson?.let { parseTimeline(it) } ?: return false
+        AlarmSchedulerCore.scheduleEndAlerts(reactApplicationContext, snapshot)
+        if (snapshot.alarmSoundUri != null) {
+            EndAlertNotifier.updateChannelSound(reactApplicationContext, snapshot.alarmSoundUri)
+        }
+        return true
+    }
+
     /** Starts the foreground service that holds the live progress notification. */
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun startLive(): Boolean {

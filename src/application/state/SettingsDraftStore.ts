@@ -1,5 +1,12 @@
 import { clampBlur, normalizeSettings, type Settings } from "@domain/entities/Settings";
 import { clonePeriod, type Period } from "@domain/entities/Period";
+import {
+  cloneWeekSchedule,
+  periodsFor,
+  weekdayOf,
+  type WeekSchedule,
+  type Weekday,
+} from "@domain/entities/WeekSchedule";
 import { parseTimeHHMM, toHHMM, minutesOfDayToLabel } from "@domain/value-objects/TimeOfDay";
 import { normalizeAccentColor } from "@domain/value-objects/AccentColor";
 
@@ -8,6 +15,9 @@ import { normalizeAccentColor } from "@domain/value-objects/AccentColor";
  * settings; "Save & apply" commits it through the repository + alerts/snapshot
  * adapters, "close" reverts to the committed value. Native wallpapers are
  * handled by WallpaperStorePort; here we only remember the intended uri.
+ *
+ * The draft is weekly: `weekday` is the tab being edited; every draft mutation
+ * targets that day's period list only.
  */
 export interface DraftSnapshot {
   accentColor: string;
@@ -19,7 +29,10 @@ export interface DraftSnapshot {
   colorActiveBars: boolean;
   wallpaperBlur: number;
   wallpaperUri: string | null;
-  periods: Period[];
+  alarmSoundUri: string | null;
+  /** 0 = Sunday … 6 = Saturday — the weekday tab being edited. */
+  weekday: Weekday;
+  weekSchedule: WeekSchedule;
 }
 
 export class SettingsDraftStore {
@@ -54,7 +67,9 @@ export class SettingsDraftStore {
       colorActiveBars: s.colorActiveBars,
       wallpaperBlur: s.wallpaperBlur,
       wallpaperUri: s.wallpaperUri,
-      periods: s.periods.map(clonePeriod),
+      alarmSoundUri: s.alarmSoundUri,
+      weekday: 1,
+      weekSchedule: cloneWeekSchedule(s.weekSchedule),
     };
   }
 
@@ -97,7 +112,7 @@ export class SettingsDraftStore {
   }
 
   getDraft(): DraftSnapshot {
-    return { ...this.draft, periods: this.draft.periods.map(clonePeriod) };
+    return { ...this.draft, weekSchedule: cloneWeekSchedule(this.draft.weekSchedule) };
   }
 
   getCommitted(): Settings {
@@ -112,10 +127,7 @@ export class SettingsDraftStore {
     return this.dirty;
   }
 
-  /**
-   * Draft values used by the home view so palette / accent / wallpaper /
-   * color-clock previews render live behind the settings sheet.
-   */
+  /** Draft values used by the home view so palette / accent / wallpaper / color-clock previews render live behind the settings sheet. */
   effectiveOverrides(): {
     accentColor: string;
     paletteIndex: number;
@@ -123,6 +135,7 @@ export class SettingsDraftStore {
     colorActiveBars: boolean;
     wallpaperBlur: number;
     wallpaperUri: string | null;
+    weekSchedule: WeekSchedule;
   } | null {
     if (!this.opened) return null;
     return {
@@ -132,6 +145,7 @@ export class SettingsDraftStore {
       colorActiveBars: this.draft.colorActiveBars,
       wallpaperBlur: this.draft.wallpaperBlur,
       wallpaperUri: this.draft.wallpaperUri,
+      weekSchedule: this.draft.weekSchedule,
     };
   }
 
@@ -179,6 +193,12 @@ export class SettingsDraftStore {
     this.notify();
   }
 
+  setAlarmSound(uri: string | null): void {
+    this.draft.alarmSoundUri = uri;
+    this.dirty = true;
+    this.notify();
+  }
+
   setWallpaperBlur(blur: number): void {
     this.draft.wallpaperBlur = clampBlur(blur);
     this.dirty = true;
@@ -191,52 +211,83 @@ export class SettingsDraftStore {
     this.notify();
   }
 
+  /** Switches the weekday tab being edited (does not mark dirty by itself). */
+  setWeekday(weekday: number): void {
+    this.draft.weekday = weekdayOf(weekday);
+    this.notify();
+  }
+
+  private dayPeriods(): Period[] {
+    return this.draft.weekSchedule[this.draft.weekday];
+  }
+
   updatePeriod(id: string, patch: { name?: string; start?: string; end?: string }): void {
-    this.draft.periods = this.draft.periods.map((p) => {
-      if (p.id !== id) return p;
-      const next: Period = { id: p.id, name: p.name, start: p.start, end: p.end };
-      if (patch.name !== undefined) next.name = patch.name.trim() || `Period ${this.draft.periods.indexOf(p) + 1}`;
-      if (patch.start !== undefined) next.start = parseTimeHHMM(patch.start);
-      if (patch.end !== undefined) next.end = parseTimeHHMM(patch.end);
-      return next;
+    this.draft.weekSchedule = this.draft.weekSchedule.map((day, i) => {
+      if (i !== this.draft.weekday) return day;
+      return day.map((p) => {
+        if (p.id !== id) return p;
+        const next: Period = { id: p.id, name: p.name, start: p.start, end: p.end };
+        if (patch.name !== undefined) next.name = patch.name.trim() || `Period ${day.indexOf(p) + 1}`;
+        if (patch.start !== undefined) next.start = parseTimeHHMM(patch.start);
+        if (patch.end !== undefined) next.end = parseTimeHHMM(patch.end);
+        return next;
+      });
     });
     this.dirty = true;
     this.notify();
   }
 
   moveUp(index: number): void {
-    if (index <= 0 || index >= this.draft.periods.length) return;
-    const arr = [...this.draft.periods];
+    const day = this.dayPeriods();
+    if (index <= 0 || index >= day.length) return;
+    const arr = [...day];
     [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
-    this.draft.periods = arr;
-    this.dirty = true;
-    this.notify();
+    this.replaceDay(arr);
   }
 
   moveDown(index: number): void {
-    if (index < 0 || index >= this.draft.periods.length - 1) return;
-    const arr = [...this.draft.periods];
+    const day = this.dayPeriods();
+    if (index < 0 || index >= day.length - 1) return;
+    const arr = [...day];
     [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
-    this.draft.periods = arr;
-    this.dirty = true;
-    this.notify();
+    this.replaceDay(arr);
   }
 
   remove(index: number): void {
-    if (this.draft.periods.length <= 1) return;
-    this.draft.periods = this.draft.periods.filter((_, i) => i !== index);
+    const day = this.dayPeriods();
+    if (day.length <= 1) return;
+    this.replaceDay(day.filter((_, i) => i !== index));
+  }
+
+  addPeriod(newPeriod: Period): void {
+    this.replaceDay([...this.dayPeriods(), newPeriod]);
+  }
+
+  /** Empties the active weekday — the "no lectures today" preset. */
+  clearDay(): void {
+    this.replaceDay([]);
+  }
+
+  /** Copies the active weekday's periods to every other day (independent clones). */
+  copyToAllDays(): void {
+    const source = this.dayPeriods();
+    this.draft.weekSchedule = this.draft.weekSchedule.map((day, i) =>
+      i === this.draft.weekday ? day : source.map(clonePeriod),
+    );
     this.dirty = true;
     this.notify();
   }
 
-  addPeriod(newPeriod: Period): void {
-    this.draft.periods = [...this.draft.periods, newPeriod];
+  private replaceDay(periods: Period[]): void {
+    this.draft.weekSchedule = this.draft.weekSchedule.map((day, i) =>
+      i === this.draft.weekday ? periods : day,
+    );
     this.dirty = true;
     this.notify();
   }
 
   toDraftPeriodVM() {
-    return this.draft.periods.map((p) => ({
+    return periodsFor(this.draft.weekSchedule, this.draft.weekday).map((p) => ({
       id: p.id,
       name: p.name,
       start: toHHMM(p.start),

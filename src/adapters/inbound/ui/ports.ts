@@ -44,6 +44,16 @@ export interface SettingsActions {
   moveDown(index: number): void;
   remove(index: number): void;
   addPeriod(): void;
+  /** Switches the weekday tab being edited (0 = Sunday … 6 = Saturday). */
+  setWeekday(weekday: number): void;
+  /** Empties the active weekday — the "no lectures" preset. */
+  clearDay(): void;
+  /** Copies the active weekday's periods to every other day. */
+  copyToAllDays(): void;
+  /** Opens the system picker for a custom alarm ringtone. */
+  pickAlarmSound(): void;
+  /** Reverts to the built-in alarm tone. */
+  clearAlarmSound(): void;
   pickWallpaper(): Promise<void>;
   removeWallpaper(): void;
   save(): Promise<void>;

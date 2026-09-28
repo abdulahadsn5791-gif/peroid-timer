@@ -29,6 +29,10 @@ export interface ScheduleRowViewModel {
 
 export interface HomeView {
   todayLabel: string;
+  /** 0 = Sunday … 6 = Saturday — the weekday the view is showing. */
+  weekday: number;
+  /** True when today's preset has no lectures (empty preset). */
+  isEmptyDay: boolean;
   hasWallpaper: boolean;
   wallpaperUri: string | null;
   wallpaperBlur: number;
@@ -59,7 +63,13 @@ export interface SettingsDraftVM {
   wallpaperBlur: number;
   wallpaperPreviewUri: string | null;
   hasWallpaper: boolean;
+  /** 0 = Sunday … 6 = Saturday — the weekday tab being edited. */
+  weekday: number;
+  /** One row list per weekday; index 0 = Sunday … 6 = Saturday. */
+  weekPeriods: PeriodDraftVM[][];
+  /** Kept for convenience: the rows of the active weekday tab. */
   periods: PeriodDraftVM[];
+  alarmSoundUri: string | null;
   dirty: boolean;
 }
 

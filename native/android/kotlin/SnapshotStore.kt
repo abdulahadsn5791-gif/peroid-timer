@@ -1,6 +1,7 @@
 package com.periodtimer
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
@@ -8,6 +9,11 @@ import java.io.File
  * Native mirror of the DayTimeline snapshot the app writes to its documents
  * folder. This is data only — schedule *rules* never exist on the native side,
  * only "what is true at time T" lookups against these numbers.
+ *
+ * v5: weekly timetables. The snapshot always describes ONE resolved day;
+ * an empty `segments` list means that weekday's preset is empty — no lectures,
+ * so no alarms, no live notification, nothing rings that day.
+ * `alarmSoundUri` carries the user's custom ringtone; null/absent = built-in.
  */
 data class SegmentSnapshot(
     val id: String,
@@ -47,9 +53,11 @@ data class TimelineSnapshot(
     val version: Int,
     val generatedAtUnixSec: Long,
     val boundaryUnixSec: Long,
+    val weekday: Int,
     val accentHex: String,
     val soundEnabled: Boolean,
     val colorNotification: Boolean,
+    val alarmSoundUri: String?,
     val segments: List<SegmentSnapshot>,
 )
 
@@ -67,6 +75,7 @@ data class Lookup(
 
 object SnapshotStore {
     private const val NAME = "period-timer-snapshot.json"
+    private const val LAST_NOTIFIED_NAME = "period-timer-last-notified.txt"
 
     fun load(context: Context): TimelineSnapshot? {
         val file = File(context.filesDir, NAME)
@@ -82,12 +91,17 @@ object SnapshotStore {
         val segs = o.getJSONArray("segments")
         val segments = (0 until segs.length()).map { i -> segmentFromJson(segs.getJSONObject(i)) }
         return TimelineSnapshot(
-            version = o.optInt("version", 4),
+            version = o.optInt("version", 5),
             generatedAtUnixSec = o.optLong("generatedAtUnixSec", 0L),
             boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
+            weekday = o.optInt("weekday", 0),
             accentHex = o.optString("accentHex", "#2563EB"),
             soundEnabled = o.optBoolean("soundEnabled", true),
             colorNotification = o.optBoolean("colorNotification", false),
+            alarmSoundUri = if (o.has("alarmSoundUri") && !o.isNull("alarmSoundUri"))
+                o.getString("alarmSoundUri")
+            else
+                null,
             segments = segments,
         )
     }
@@ -136,5 +150,26 @@ object SnapshotStore {
         }
         // next may already be assigned; if the loop broke early it's correct.
         return Lookup(s, current, next, previous, doneCount, now)
+    }
+
+    // --- per-day end-of-period alert dedupe ("weekday:periodId") ---
+
+    fun lastNotifiedKey(context: Context): String? {
+        val file = File(context.filesDir, LAST_NOTIFIED_NAME)
+        if (!file.exists()) return null
+        return try {
+            file.readText().trim().ifEmpty { null }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun setLastNotifiedKey(context: Context, key: String?) {
+        val file = File(context.filesDir, LAST_NOTIFIED_NAME)
+        if (key == null) {
+            file.delete()
+            return
+        }
+        file.writeText(key)
     }
 }

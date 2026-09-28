@@ -4,6 +4,7 @@ import type { AlertSchedulerPort } from "@application/ports/outbound/AlertSchedu
 
 interface NativeScheduler {
   scheduleTransitions(timelineJson: string): void;
+  scheduleEndOfPeriodAlerts(timelineJson: string): void;
   startLive(): void;
   stopLive(): void;
   hasExactAlarmAccess(): Promise<boolean>;
@@ -31,6 +32,12 @@ export class NativeAlertScheduler implements AlertSchedulerPort {
       return;
     }
     mod.scheduleTransitions(JSON.stringify(timeline));
+  }
+
+  async scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void> {
+    const mod = this.native();
+    if (!mod) return;
+    mod.scheduleEndOfPeriodAlerts(JSON.stringify(timeline));
   }
 
   async startLiveNotification(): Promise<void> {

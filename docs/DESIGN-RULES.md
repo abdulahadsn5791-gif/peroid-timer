@@ -67,6 +67,15 @@ tests/                            (Bun tests + fakes + architecture test)
 scripts/                          (Bun-only dev scripts)
 ```
 
+### 2.4 Weekly schedule (v5 snapshot)
+- `Settings.weekSchedule` holds one `Period[]` per weekday (0 = Sunday … 6 =
+  Saturday, matching `Date.getDay()`). An empty list is the "no lectures"
+  preset: the day timeline snapshot gets zero segments and native stays off —
+  no live notification, no alarms, no sound.
+- The native snapshot (`DayTimeline` v5) always describes ONE resolved day and
+  carries `weekday` + `alarmSoundUri`. End-of-period dedupe keys are
+  `"weekday:periodId"` so the same period rings again on other days.
+
 ### 2.2 Rules
 1. `domain/` and `application/` must not import `react`, `react-native`, `expo-*`, `@react-native-*`, any `adapters/` path, or any Bun/Node API.
 2. **No business logic in UI, hooks, native code, or storage** — time math, phase selection, colors-by-phase, "up next", formatting live only in `domain/services`; orchestration lives in `application/use-cases`.
@@ -83,7 +92,8 @@ scripts/                          (Bun-only dev scripts)
 | `ImagePickerPort` | `pickImage(): Promise<{ uri: string; width: number; height: number } \| null>` |
 | `WallpaperStorePort` | `getStoredUri(): string \| null` · `setPreviewImage(src): Promise<string \| null>` · `clearPreview(): void` · `commitPreview(): Promise<string \| null>` · `rollbackPreview(): void` · `removeStored(): Promise<void>` |
 | `SoundPort` | `playEndSound(): Promise<void>` |
-| `AlertSchedulerPort` | `scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>` · `startLiveNotification(): Promise<void>` · `stopLiveNotification(): Promise<void>` · `hasExactAlarmAccess(): Promise<boolean>` · `requestExactAlarmAccess(): Promise<boolean>` |
+| `AlertSchedulerPort` | `scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>` · `scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void>` · `startLiveNotification(): Promise<void>` · `stopLiveNotification(): Promise<void>` · `hasExactAlarmAccess(): Promise<boolean>` · `requestExactAlarmAccess(): Promise<boolean>` |
+| `SoundPickerPort` | `pickSound(): Promise<{ uri: string; name: string } \| null>` |
 | `LockScreenSnapshotPort` | `write(timeline: DayTimeline): Promise<void>` · `read(): DayTimeline \| null` |
 
 Inbound ports are the use-case interfaces (`GetHomeView`, `OpenSettings`, `PreviewPalette`, `PreviewAccent`, `PreviewColorClock`, `PreviewSound`, `DraftPeriods`, `PickWallpaper`, `RemoveWallpaper`, `SaveSettings`, `CloseSettings`, `CheckForPeriodEnd`).

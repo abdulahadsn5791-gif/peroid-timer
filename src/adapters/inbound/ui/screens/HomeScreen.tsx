@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Image, Pressable, StyleSheet, View, useWindowDimensions, type View as RNView } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions, type View as RNView } from "react-native";
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -109,7 +109,17 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
 
           {!isWide ? (
             <View style={styles.narrowListWrap}>
-              <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} />
+              {view.isEmptyDay ? (
+                <View style={styles.emptyDayCard}>
+                  <Text style={styles.emptyDayTitle}>No lectures today</Text>
+                  <Text style={styles.emptyDaySub}>
+                    This weekday's preset is empty — alarms and notifications are off. Add periods in
+                    Settings to schedule this day.
+                  </Text>
+                </View>
+              ) : (
+                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} />
+              )}
             </View>
           ) : null}
         </Animated.ScrollView>
@@ -203,6 +213,25 @@ export function AppLoading() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  emptyDayCard: {
+    borderRadius: tokens.radius.lg,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: tokens.color.hairlineStrong,
+    padding: tokens.spacing.xl,
+    alignItems: "center",
+    gap: 6,
+  },
+  emptyDayTitle: {
+    fontSize: tokens.text.body,
+    fontWeight: "600",
+    color: tokens.color.text.secondary,
+  },
+  emptyDaySub: {
+    fontSize: tokens.text.micro,
+    color: tokens.color.text.tertiary,
+    textAlign: "center",
+  },
   loadHeader: {
     flexDirection: "row",
     alignItems: "center",

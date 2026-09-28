@@ -1,11 +1,17 @@
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
 import type { SoundPort } from "@application/ports/outbound/SoundPort";
 
+const BUILTIN_TONE = require("../../../../assets/period-end.wav");
+
 /**
- * End-of-period alert sound (a bundled three-beat tone, assets/period-end.wav).
+ * End-of-period alarm sound. Plays the user's chosen ringtone
+ * (settings.alarmSoundUri) and falls back to the bundled three-beat tone
+ * (assets/period-end.wav) when no custom sound is set or it fails to load.
  */
 export class ExpoAudioPlayer implements SoundPort {
-  private readonly player = createAudioPlayer(require("../../../../assets/period-end.wav"));
+  private readonly builtinPlayer = createAudioPlayer(BUILTIN_TONE);
+  private customPlayer: ReturnType<typeof createAudioPlayer> | null = null;
+  private customUri: string | null = null;
 
   async prepare(): Promise<void> {
     await setAudioModeAsync({
@@ -15,12 +21,39 @@ export class ExpoAudioPlayer implements SoundPort {
     });
   }
 
-  async playEndSound(): Promise<void> {
+  /** Swaps the custom ringtone at runtime (called on settings changes). */
+  setCustomSource(uri: string | null): void {
+    if (uri === this.customUri) return;
+    this.customUri = uri;
     try {
-      this.player.seekTo(0);
-      this.player.play();
+      this.customPlayer?.release();
     } catch {
-      // Sound is best-effort; the full-screen alert carries its own tone.
+      // player already released
+    }
+    this.customPlayer = null;
+    if (uri) {
+      try {
+        this.customPlayer = createAudioPlayer({ uri });
+      } catch {
+        this.customPlayer = null;
+      }
+    }
+  }
+
+  async playEndSound(): Promise<void> {
+    const player = this.customUri ? this.customPlayer : this.builtinPlayer;
+    if (!player) return;
+    try {
+      player.seekTo(0);
+      player.play();
+    } catch {
+      // Sound is best-effort; the native alert notification carries its own tone.
+      try {
+        this.builtinPlayer.seekTo(0);
+        this.builtinPlayer.play();
+      } catch {
+        // give up silently
+      }
     }
   }
 }

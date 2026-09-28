@@ -3,12 +3,17 @@ import type { DayTimeline } from "@domain/services/buildDayTimeline";
 
 export class InMemoryAlertScheduler implements AlertSchedulerPort {
   scheduled: DayTimeline[] = [];
+  endAlerts: DayTimeline[] = [];
   startLiveCalls = 0;
   stopLiveCalls = 0;
   exactAccess = true;
 
   async scheduleTransitionAlerts(timeline: DayTimeline): Promise<void> {
     this.scheduled.push(timeline);
+  }
+
+  async scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void> {
+    this.endAlerts.push(timeline);
   }
 
   async startLiveNotification(): Promise<void> {

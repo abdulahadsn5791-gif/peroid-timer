@@ -81,3 +81,15 @@ export class PreviewNotificationsUseCase implements PreviewNotificationsPort {
     return vm(this.draftStore, this.wallpaper);
   }
 }
+
+/**
+ * Live-updates the draft's custom ringtone without opening the picker (used by
+ * the "use built-in sound" reset action).
+ */
+export class PreviewAlarmSoundUseCase {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(uri: string | null): SettingsDraftVM {
+    this.draftStore.setAlarmSound(uri);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}

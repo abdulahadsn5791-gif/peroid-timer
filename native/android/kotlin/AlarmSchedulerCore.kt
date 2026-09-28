@@ -16,9 +16,11 @@ import android.provider.Settings
  */
 object AlarmSchedulerCore {
     const val ACTION_ALARM = "com.periodtimer.ACTION_ALARM"
+    const val ACTION_END_ALERT = "com.periodtimer.ACTION_END_ALERT"
     const val EXTRA_SEGMENT_ID = "segmentId"
     const val EXTRA_TRANSITION = "transition" // "start" | "end"
     const val EXTRA_AT_UNIX_SEC = "atUnixSec"
+    const val EXTRA_PERIOD_NAME = "periodName"
 
     fun hasExactAlarmAccess(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
@@ -76,6 +78,31 @@ object AlarmSchedulerCore {
         return scheduled
     }
 
+    /**
+     * Arms one "alarm clock" per period end: fires ACTION_END_ALERT, which
+     * rings the alarm ringtone and posts a heads-up notification — even when
+     * the app process is dead. The PendingIntent request code rotates per
+     * calendar day, so the same period id rings again on other weekdays of the
+     * weekly timetable instead of colliding with a stale PendingIntent.
+     */
+    fun scheduleEndAlerts(context: Context, snapshot: TimelineSnapshot): Int {
+        val now = System.currentTimeMillis() / 1000L
+        var scheduled = 0
+        for (seg in snapshot.segments) {
+            if (seg.endUnixSec <= now) continue
+            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val pi = endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec)
+            val exact = hasExactAlarmAccess(context)
+            if (exact) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, seg.endUnixSec * 1000L, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, seg.endUnixSec * 1000L, pi)
+            }
+            scheduled++
+        }
+        return scheduled
+    }
+
     /** Cancels every transition alarm exactly as it was scheduled. */
     fun cancelAll(context: Context, snapshot: TimelineSnapshot) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -84,6 +111,7 @@ object AlarmSchedulerCore {
                 val at = if (transition == "start") seg.startUnixSec else seg.endUnixSec
                 am.cancel(pendingIntent(context, seg.id, transition, at))
             }
+            am.cancel(endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec))
         }
     }
 
@@ -100,6 +128,21 @@ object AlarmSchedulerCore {
             .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
         // One PendingIntent per (segment, transition) so cancellations don't collide.
         val code = (segId.hashCode() * 31 + transition.hashCode()) and 0x7fffffff
+        return PendingIntent.getBroadcast(context, code, intent, flags())
+    }
+
+    private fun endAlertPendingIntent(
+        context: Context,
+        segId: String,
+        periodName: String,
+        atUnixSec: Long,
+    ): PendingIntent {
+        val intent = Intent(context, TimerAlarmReceiver::class.java)
+            .setAction(ACTION_END_ALERT)
+            .putExtra(EXTRA_SEGMENT_ID, segId)
+            .putExtra(EXTRA_PERIOD_NAME, periodName)
+            .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
+        val code = (segId.hashCode() * 31 + atUnixSec.toInt()) and 0x7fffffff
         return PendingIntent.getBroadcast(context, code, intent, flags())
     }
 

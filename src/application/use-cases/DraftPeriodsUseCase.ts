@@ -37,16 +37,17 @@ export class DraftPeriodsUseCase implements DraftPeriodsPort {
 
   addDefault(): SettingsDraftVM {
     const draft = this.draftStore.getDraft();
-    const last = draft.periods[draft.periods.length - 1];
+    const day = draft.weekSchedule[draft.weekday] ?? [];
+    const last = day[day.length - 1];
     const start: TimeOfDay = last ? last.end : addMinutes({ minutes: 8 * 60 + 30 }, 0);
     const end = addMinutes(start, 40);
     // Period numbers are 1-based; name gets a fresh id.
-    const existingNames = new Set(draft.periods.map((p) => p.name));
-    let name = `Period ${draft.periods.length + 1}`;
+    const existingNames = new Set(day.map((p) => p.name));
+    let name = `Period ${day.length + 1}`;
     let guard = 0;
     while (existingNames.has(name) && guard < 100) {
       guard++;
-      name = `Period ${draft.periods.length + 1 + guard}`;
+      name = `Period ${day.length + 1 + guard}`;
     }
     const period = createPeriod(`draft-${this.nextId++}`, name, toHHMM(start), toHHMM(end));
     this.draftStore.addPeriod(period);
