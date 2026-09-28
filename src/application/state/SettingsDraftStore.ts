@@ -1,5 +1,5 @@
 import { clampBlur, normalizeSettings, type Settings } from "@domain/entities/Settings";
-import { clonePeriod, type Period } from "@domain/entities/Period";
+import { clonePeriod, createPeriod, type Period } from "@domain/entities/Period";
 import {
   cloneWeekSchedule,
   periodsFor,
@@ -221,15 +221,17 @@ export class SettingsDraftStore {
     return this.draft.weekSchedule[this.draft.weekday];
   }
 
-  updatePeriod(id: string, patch: { name?: string; start?: string; end?: string }): void {
+  updatePeriod(id: string, patch: { name?: string; start?: string; end?: string; teacher?: string | null; room?: string | null }): void {
     this.draft.weekSchedule = this.draft.weekSchedule.map((day, i) => {
       if (i !== this.draft.weekday) return day;
       return day.map((p) => {
         if (p.id !== id) return p;
-        const next: Period = { id: p.id, name: p.name, start: p.start, end: p.end };
+        const next: Period = { id: p.id, name: p.name, start: p.start, end: p.end, teacher: p.teacher, room: p.room };
         if (patch.name !== undefined) next.name = patch.name.trim() || `Period ${day.indexOf(p) + 1}`;
         if (patch.start !== undefined) next.start = parseTimeHHMM(patch.start);
         if (patch.end !== undefined) next.end = parseTimeHHMM(patch.end);
+        if (patch.teacher !== undefined) next.teacher = patch.teacher?.trim() || null;
+        if (patch.room !== undefined) next.room = patch.room?.trim() || null;
         return next;
       });
     });

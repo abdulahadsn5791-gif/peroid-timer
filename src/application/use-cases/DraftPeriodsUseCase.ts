@@ -15,7 +15,7 @@ export class DraftPeriodsUseCase implements DraftPeriodsPort {
 
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
 
-  updatePeriod(id: string, patch: { name?: string; start?: string; end?: string }): SettingsDraftVM {
+  updatePeriod(id: string, patch: { name?: string; start?: string; end?: string; teacher?: string | null; room?: string | null }): SettingsDraftVM {
     this.draftStore.updatePeriod(id, patch);
     return vm(this.draftStore, this.wallpaper);
   }
@@ -50,6 +50,10 @@ export class DraftPeriodsUseCase implements DraftPeriodsPort {
       name = `Period ${day.length + 1 + guard}`;
     }
     const period = createPeriod(`draft-${this.nextId++}`, name, toHHMM(start), toHHMM(end));
+    // New periods start without teacher/room; the user fills them in the row's
+    // detail fields. This comment keeps the intent explicit.
+    void period.teacher;
+    void period.room;
     this.draftStore.addPeriod(period);
     return vm(this.draftStore, this.wallpaper);
   }

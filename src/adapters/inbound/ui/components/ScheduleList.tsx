@@ -16,6 +16,28 @@ interface Props {
   blurTarget?: React.RefObject<RNView | null> | null;
 }
 
+/** "Ms. Khan · Room 12" — hides the separator when either part is missing. */
+export function metaLabel(teacher: string | null, room: string | null): string | null {
+  const parts = [teacher, room].filter((v): v is string => !!v);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function TeacherIcon({ color }: { color: string }) {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+      <Path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 110 8 4 4 0 010-8z" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function RoomIcon({ color }: { color: string }) {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget }: Props) {
   const adaptive = adaptiveColors(hasWallpaper);
   const useBlur = hasWallpaper && !!blurTarget;
@@ -28,6 +50,7 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
           <View style={[styles.panelHeaderNextDot, { backgroundColor: accentHex }]} />
           <Text numberOfLines={1} style={[styles.panelHeaderNextText, { color: adaptive.secondary }]}>
             Next · {next.name}
+            {next.room ? ` · ${next.room}` : ""}
           </Text>
         </View>
       ) : null}
@@ -79,6 +102,8 @@ function PeriodRow({
   hasWallpaper: boolean;
   adaptive: ReturnType<typeof adaptiveColors>;
 }) {
+  const meta = metaLabel(row.teacher, row.room);
+
   if (row.status === "passed") {
     return (
       <View style={styles.row}>
@@ -87,9 +112,16 @@ function PeriodRow({
             <Path d="M20 6L9 17l-5-5" stroke={tokens.color.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </View>
-        <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.secondary, textDecorationLine: "line-through" }]}>
-          {row.name}
-        </Text>
+        <View style={styles.rowTextWrap}>
+          <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.secondary, textDecorationLine: "line-through" }]}>
+            {row.name}
+          </Text>
+          {meta ? (
+            <Text numberOfLines={1} style={[styles.metaText, { color: adaptive.secondary }]}>
+              {meta}
+            </Text>
+          ) : null}
+        </View>
         <Text style={{ color: adaptive.secondary, fontSize: tokens.text.micro, flexShrink: 0 }}>Done</Text>
       </View>
     );
@@ -102,7 +134,7 @@ function PeriodRow({
       <View style={[styles.currentRow, { backgroundColor: tint }]}>
         <View style={styles.currentHeader}>
           <PulseDot color={accentHex} />
-          <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={styles.rowTextWrap}>
             <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.primary, fontWeight: "600" }]}>
               {row.name}
             </Text>
@@ -125,6 +157,26 @@ function PeriodRow({
             ]}
           />
         </View>
+        {meta ? (
+          <View style={styles.currentMetaRow}>
+            {row.teacher ? (
+              <View style={styles.metaChip}>
+                <TeacherIcon color={adaptive.secondary} />
+                <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
+                  {row.teacher}
+                </Text>
+              </View>
+            ) : null}
+            {row.room ? (
+              <View style={styles.metaChip}>
+                <RoomIcon color={adaptive.secondary} />
+                <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
+                  {row.room}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -132,9 +184,16 @@ function PeriodRow({
   return (
     <View style={styles.row}>
       <View style={[styles.statusCircle, { backgroundColor: "transparent", borderWidth: 2, borderColor: adaptive.ringTick }]} />
-      <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.primary }]}>
-        {row.name}
-      </Text>
+      <View style={styles.rowTextWrap}>
+        <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.primary }]}>
+          {row.name}
+        </Text>
+        {meta ? (
+          <Text numberOfLines={1} style={[styles.metaText, { color: adaptive.secondary }]}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
       <Text style={{ color: adaptive.secondary, fontSize: tokens.text.micro, flexShrink: 0 }}>{row.rangeText}</Text>
     </View>
   );
@@ -217,6 +276,14 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spacing.md,
     borderRadius: tokens.radius.md,
   },
+  rowTextWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
+  },
+  metaText: {
+    fontSize: tokens.text.micro,
+  },
   currentRow: {
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.md,
@@ -225,6 +292,27 @@ const styles = StyleSheet.create({
   currentHeader: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  currentMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: tokens.spacing.sm,
+    marginTop: tokens.spacing.sm,
+  },
+  metaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    maxWidth: "100%",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: tokens.radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  metaChipText: {
+    fontSize: tokens.text.micro,
+    fontWeight: "500",
+    flexShrink: 1,
   },
   statusCircle: {
     width: 24,
@@ -235,7 +323,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   rowName: {
-    flex: 1,
+    flexShrink: 1,
     minWidth: 0,
     fontSize: tokens.text.body,
     color: tokens.color.text.primary,

@@ -572,6 +572,34 @@ function PeriodRow({
           onDone={onEditingDone}
         />
       )}
+      <View style={styles.metaRow}>
+        <View style={[styles.metaInputWrap, { borderColor: tokens.color.hairlineStrong }] }>
+          <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+            <Path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 110 8 4 4 0 010-8z" stroke={tokens.color.text.tertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+          <TextInput
+            value={period.teacher ?? ""}
+            onChangeText={(teacher) => actions.updatePeriod(period.id, { teacher })}
+            style={styles.metaInput}
+            placeholder="Teacher"
+            placeholderTextColor={tokens.color.text.tertiary}
+            accessibilityLabel="Teacher name"
+          />
+        </View>
+        <View style={[styles.metaInputWrap, { borderColor: tokens.color.hairlineStrong }]}>
+          <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+            <Path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke={tokens.color.text.tertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+          <TextInput
+            value={period.room ?? ""}
+            onChangeText={(room) => actions.updatePeriod(period.id, { room })}
+            style={styles.metaInput}
+            placeholder="Room"
+            placeholderTextColor={tokens.color.text.tertiary}
+            accessibilityLabel="Room number"
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -1065,6 +1093,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: tokens.spacing.sm,
     marginTop: tokens.spacing.sm,
+  },
+  metaRow: {
+    flexDirection: "row",
+    gap: tokens.spacing.sm,
+    marginTop: tokens.spacing.sm,
+  },
+  metaInputWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: tokens.spacing.sm,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: tokens.tap,
+  },
+  metaInput: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: tokens.text.subtext,
+    color: tokens.color.text.primary,
+    paddingVertical: 6,
   },
   timeBtn: {
     flex: 1,

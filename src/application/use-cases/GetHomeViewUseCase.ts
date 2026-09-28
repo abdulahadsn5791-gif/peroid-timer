@@ -56,6 +56,11 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         clockHex: null,
         progressElapsed: 0,
         indicator: "idle",
+        teacher: null,
+        room: null,
+        nextTeacher: null,
+        nextRoom: null,
+        nextName: null,
       };
       rows = [];
     } else if (currentIdx !== -1 && today[currentIdx]) {
@@ -78,6 +83,11 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         clockHex: clockColor(palette, phase, settings.colorClock),
         progressElapsed: 1 - remainingFraction,
         indicator: "active",
+        teacher: p.teacher ?? null,
+        room: p.room ?? null,
+        nextTeacher: today[currentIdx + 1]?.teacher ?? null,
+        nextRoom: today[currentIdx + 1]?.room ?? null,
+        nextName: today[currentIdx + 1]?.name ?? null,
       };
 
       rows = this.buildRows(today, minutes, palette, (id) =>
@@ -113,6 +123,11 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         clockHex: clockColor(palette, 0 as const, settings.colorClock),
         progressElapsed: 1 - remainingFraction,
         indicator: "between",
+        teacher: null,
+        room: null,
+        nextTeacher: np.teacher ?? null,
+        nextRoom: np.room ?? null,
+        nextName: np.name,
       };
 
       rows = this.buildRows(today, minutes, palette, () => null);
@@ -126,6 +141,11 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         clockHex: null,
         progressElapsed: 0,
         indicator: "idle",
+        teacher: null,
+        room: null,
+        nextTeacher: null,
+        nextRoom: null,
+        nextName: null,
       };
       rows = this.buildRows(today, minutes, palette, () => null);
     }
@@ -171,6 +191,8 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         progressElapsed: override ? override.progressElapsed : 0,
         phaseIndex: override ? override.phaseIndex : null,
         phaseHex: override ? override.phaseHex : null,
+        teacher: p.teacher ?? null,
+        room: p.room ?? null,
       };
     });
   }

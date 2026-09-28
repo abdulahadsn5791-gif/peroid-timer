@@ -165,6 +165,29 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, style }: Props) 
             {vm.statusText}
           </Text>
         </View>
+        {
+          // Teacher + room under the status line. During a period it shows the
+          // current one; between periods it previews the up-next period's.
+          (vm.teacher || vm.room) && vm.indicator === "active" ? (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+              style={{ color: adaptive.secondary, fontSize: statusSize * 0.92, marginTop: 3, fontWeight: "500" }}
+            >
+              {[vm.teacher, vm.room].filter(Boolean).join(" · ")}
+            </Text>
+          ) : vm.nextName && vm.indicator === "between" && (vm.nextTeacher || vm.nextRoom) ? (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+              style={{ color: adaptive.secondary, fontSize: statusSize * 0.92, marginTop: 3, fontWeight: "500" }}
+            >
+              {`${vm.nextName} · ${[vm.nextTeacher, vm.nextRoom].filter(Boolean).join(" · ")}`}
+            </Text>
+          ) : null
+        }
       </View>
     </View>
   );

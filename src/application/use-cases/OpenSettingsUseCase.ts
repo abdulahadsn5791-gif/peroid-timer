@@ -23,6 +23,8 @@ export function draftVmFromStore(
       end: toHHMM(p.end),
       startLabel: minutesOfDayToLabel(p.start.minutes),
       endLabel: minutesOfDayToLabel(p.end.minutes),
+      teacher: p.teacher ?? null,
+      room: p.room ?? null,
     })),
   );
   return {

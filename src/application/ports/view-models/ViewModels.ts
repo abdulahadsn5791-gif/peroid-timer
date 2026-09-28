@@ -14,6 +14,15 @@ export interface RingViewModel {
   /** Fraction of the ring already consumed, 0..1. */
   progressElapsed: number;
   indicator: RingIndicator;
+  /** Current period's teacher; null when unset or not in a period. */
+  teacher: string | null;
+  /** Current period's room; null when unset or not in a period. */
+  room: string | null;
+  /** Up-next period's teacher (between-periods state). */
+  nextTeacher: string | null;
+  /** Up-next period's room (between-periods state). */
+  nextRoom: string | null;
+  nextName: string | null;
 }
 
 export interface ScheduleRowViewModel {
@@ -25,6 +34,8 @@ export interface ScheduleRowViewModel {
   progressElapsed: number;
   phaseIndex: PhaseIndex | null;
   phaseHex: string | null;
+  teacher: string | null;
+  room: string | null;
 }
 
 export interface HomeView {
@@ -50,6 +61,8 @@ export interface PeriodDraftVM {
   end: string;
   startLabel: string;
   endLabel: string;
+  teacher: string | null;
+  room: string | null;
 }
 
 export interface SettingsDraftVM {

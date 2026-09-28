@@ -4,6 +4,8 @@ export interface PeriodPatch {
   name?: string;
   start?: string;
   end?: string;
+  teacher?: string | null;
+  room?: string | null;
 }
 
 export interface DraftPeriodsPort {
