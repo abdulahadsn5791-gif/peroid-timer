@@ -94,6 +94,12 @@ jobs:
           PERIOD_TIMER_VERSION_NAME: ${{ steps.tag.outputs.name }}
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Tag-triggered runs default to read-only caches, which throws the
+          # Gradle cache away every release (~20 min cold builds forever).
+          # Writing it back makes every release after the first much faster.
+          cache-read-only: false
+          cache-overwrite-existing: true
 
       - name: Assemble the release APK
         working-directory: android
