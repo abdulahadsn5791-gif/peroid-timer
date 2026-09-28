@@ -56,22 +56,17 @@ function receiversFor() {
     {
       $: {
         "android:name": `${PACKAGE}.TimerBootReceiver`,
-        // Exported is REQUIRED for the system BOOT_COMPLETED broadcast, but a
-        // bare exported receiver is a spoofing vector: any other app could
-        // deliver ACTION_RESCHEDULE. The receiver therefore only reacts to the
-        // protected system boot broadcast and to our own action when the
-        // sender holds no special privileges AND the snapshot dispatches it
-        // internally — Play Protect flags broadcast-spoofable exported
-        // receivers, so the custom action is intentionally not honored from
-        // outside: TimerBootReceiver ignores it unless the app process wrote
-        // the pending snapshot itself.
+        // Exported is REQUIRED for the system BOOT_COMPLETED broadcast.
+        // Deliberately NO custom actions here: an exported receiver that
+        // advertises its own actions in an intent-filter is the pattern Play
+        // Protect's broadcast-spoofing heuristics flag. In-app rescheduling
+        // uses an explicit intent (component-addressed, no filter needed),
+        // and the receiver trusts no extras — the only effect of any spoof
+        // would be re-reading our own snapshot and re-arming our own alarms.
         "android:exported": "true",
       },
       "intent-filter": [
         { action: [{ $: { "android:name": "android.intent.action.BOOT_COMPLETED" } }] },
-        {
-          action: [{ $: { "android:name": `${PACKAGE}.ACTION_RESCHEDULE` } }],
-        },
       ],
     },
     {

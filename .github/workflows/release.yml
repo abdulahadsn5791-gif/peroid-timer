@@ -3,6 +3,10 @@ name: Release
 # Tag a commit to publish an APK. The tag is the single source of truth for the
 # version: v1.2.3 becomes versionName 1.2.3 and versionCode 10203, so a rebuild
 # of the same tag is reproducible and a later tag can always upgrade over it.
+#
+# Never rebuild the same tag twice: the publisher refuses to replace assets,
+# because a second APK with the same versionCode makes Android report
+# "App already installed" instead of updating. Move the tag or cut a new one.
 on:
   push:
     tags:
@@ -118,6 +122,20 @@ jobs:
             echo "::error::No APK produced by assembleRelease."
             exit 1
           fi
+          # Guard against a debug-signed APK ever being published: the cert
+          # must be the documented release key. A debug-signed upload would
+          # refuse to install as an upgrade over every prior release.
+          FP=$(keytool -printcert -jarfile "$SRC" | grep 'SHA256:' | head -1 | sed 's/.*SHA256: *//')
+          EXPECTED="AE:DC:06:EA:CB:98:DE:25:7A:87:A6:4F:AA:4F:7A:8B:03:AB:95:F6:05:0C:7F:1D:2E:6C:40:86:87:6C:5E:BC"
+          if [ -z "$FP" ]; then
+            echo "::error::Could not read the APK signing certificate."
+            exit 1
+          fi
+          if [ "$FP" != "$EXPECTED" ]; then
+            echo "::error::APK is signed with an unexpected certificate: $FP"
+            echo "::error::Refusing to publish a non-release-signed APK."
+            exit 1
+          fi
           mkdir -p dist
           # A fixed name keeps the /releases/latest/download/ link stable forever.
           cp "$SRC" dist/period-timer.apk
@@ -132,15 +150,30 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
           NAME: ${{ steps.tag.outputs.name }}
           CODE: ${{ steps.tag.outputs.code }}
-          SIZE_MB: ${{ steps.apk.outputs.size }}
         run: |
           set -euo pipefail
+          # A tag ships exactly one binary. If this release already has assets,
+          # the tag was rebuilt — re-uploading would publish a second APK with
+          # the same versionCode, and Android then reports
+          # "App already installed" instead of updating. Cut a new version.
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets | length' 2>/dev/null || echo 0)
+          if [ "$ASSETS" != "0" ]; then
+            echo "::error::Release $TAG already has assets. Never rebuild the same tag:"
+            echo "::error::the same versionCode twice makes Android refuse the update."
+            echo "::error::Cut a new version (bump app.json too), then tag that."
+            exit 1
+          fi
           NOTES=$(cat <<EOF
           Period Timer $NAME (versionCode $CODE)
 
+          - Weekly timetable: one preset per weekday; an empty day means no
+            lectures — timer, alarms and notifications stay off
+          - Teacher and room stored per period, shown on the timer, the
+            schedule list and the widget
+          - Custom alarm ringtone that rings even when the app is closed
+          - Live progress notification with countdown and bar
           - Download \`period-timer.apk\` (all ABIs: arm64-v8a, armeabi-v7a, x86, x86_64)
           - Verify with \`SHA256SUMS\`
-          - Android Studio emulators are supported (x86 / x86_64 included)
 
           Installing a sideloaded build: Android asks you to allow
           "Install unknown apps" for the browser you downloaded from, once.
@@ -148,15 +181,9 @@ jobs:
           live countdown to survive the screen turning off.
           EOF
           )
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG exists; replacing its assets."
-            gh release upload "$TAG" dist/period-timer.apk dist/SHA256SUMS --clobber
-            gh release edit "$TAG" --title "Period Timer $NAME" --notes "$NOTES"
-          else
-            gh release create "$TAG" \
-              dist/period-timer.apk dist/SHA256SUMS \
-              --title "Period Timer $NAME" \
-              --notes "$NOTES" \
-              --latest
-          fi
+          gh release create "$TAG" \
+            dist/period-timer.apk dist/SHA256SUMS \
+            --title "Period Timer $NAME" \
+            --notes "$NOTES" \
+            --latest
           echo "https://github.com/${{ github.repository }}/releases/latest/download/period-timer.apk"

@@ -20,11 +20,11 @@ import android.content.Intent
  */
 class TimerBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED -> rescheduleFromSnapshot(context)
-            // Custom action: only meaningful for intra-app rescheduling.
-            "com.periodtimer.ACTION_RESCHEDULE" -> rescheduleFromSnapshot(context)
-        }
+        // Only the protected system boot broadcast reaches us through the
+        // manifest filter (no custom actions are advertised — see the plugin
+        // comment). Anything else is ignored outright.
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        rescheduleFromSnapshot(context)
     }
 
     private fun rescheduleFromSnapshot(context: Context) {
