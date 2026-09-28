@@ -125,7 +125,10 @@ jobs:
           # Guard against a debug-signed APK ever being published: the cert
           # must be the documented release key. A debug-signed upload would
           # refuse to install as an upgrade over every prior release.
-          FP=$(keytool -printcert -jarfile "$SRC" | grep 'SHA256:' | head -1 | sed 's/.*SHA256: *//')
+          # keytool prints "(SHA-256)" on JDK 9+ and "SHA256" on JDK 8; match
+          # both. pipefail would silently kill the step on no-match, so the
+          # assignment tolerates failure and the empty check reports clearly.
+          FP=$(keytool -printcert -jarfile "$SRC" 2>/dev/null | grep -m1 -E 'SHA-?256' | sed 's/.*: *//' | tr -d '[:space:]' || true)
           EXPECTED="AE:DC:06:EA:CB:98:DE:25:7A:87:A6:4F:AA:4F:7A:8B:03:AB:95:F6:05:0C:7F:1D:2E:6C:40:86:87:6C:5E:BC"
           if [ -z "$FP" ]; then
             echo "::error::Could not read the APK signing certificate."
