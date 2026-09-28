@@ -146,7 +146,12 @@ jobs:
             echo "::error::Could not read the APK signing certificate."
             exit 1
           fi
-          if [ "$FP" != "$EXPECTED" ]; then
+          # Compare case-insensitively and colon-blind: apksigner prints
+          # lowercase hex without separators, keytool prints uppercase with
+          # colons — the cert, not the formatting, is what matters.
+          FP_NORM=$(printf '%s' "$FP" | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          EXPECTED_NORM=$(printf '%s' "$EXPECTED" | tr -d ':' | tr '[:upper:]' '[:lower:]')
+          if [ "$FP_NORM" != "$EXPECTED_NORM" ]; then
             echo "::error::APK is signed with an unexpected certificate: $FP"
             echo "::error::Refusing to publish a non-release-signed APK."
             exit 1
