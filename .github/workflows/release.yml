@@ -125,10 +125,22 @@ jobs:
           # Guard against a debug-signed APK ever being published: the cert
           # must be the documented release key. A debug-signed upload would
           # refuse to install as an upgrade over every prior release.
-          # keytool prints "(SHA-256)" on JDK 9+ and "SHA256" on JDK 8; match
-          # both. pipefail would silently kill the step on no-match, so the
-          # assignment tolerates failure and the empty check reports clearly.
-          FP=$(keytool -printcert -jarfile "$SRC" 2>/dev/null | grep -m1 -E 'SHA-?256' | sed 's/.*: *//' | tr -d '[:space:]' || true)
+          # keytool -printcert -jarfile only reads v1 (JAR) signatures, but
+          # minSdk >= 24 means AGP emits v2/v3 signatures only and keytool
+          # prints nothing — so read the signing cert with apksigner, which
+          # understands every scheme. Output lines look like:
+          #   Signer #1 certificate SHA-256 digest: AA:BB:...
+          APKSIGNER=$(ls "$ANDROID_HOME/build-tools"/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::apksigner not found under ANDROID_HOME=$ANDROID_HOME."
+            exit 1
+          fi
+          # sed must stop at the LAST colon pair before the hex (": "), not
+          # greedy '.*:' which would eat the fingerprint's own colons. Grep -o
+          # over the whole line achieves the same with less footgun. Note the
+          # tolerates-failure || true: with pipefail, a grep miss would
+          # otherwise kill the step before the clear empty-FP error below.
+          FP=$("$APKSIGNER" verify --print-certs "$SRC" 2>/dev/null | grep -o 'certificate SHA-256 digest:.*' | sed 's/^certificate SHA-256 digest: *//' | tr -d '[:space:]' || true)
           EXPECTED="AE:DC:06:EA:CB:98:DE:25:7A:87:A6:4F:AA:4F:7A:8B:03:AB:95:F6:05:0C:7F:1D:2E:6C:40:86:87:6C:5E:BC"
           if [ -z "$FP" ]; then
             echo "::error::Could not read the APK signing certificate."
