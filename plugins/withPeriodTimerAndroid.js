@@ -15,6 +15,7 @@ const {
   withAndroidManifest,
   withMainApplication,
   withAppBuildGradle,
+  withGradleProperties,
   withDangerousMod,
 } = require("@expo/config-plugins");
 const fs = require("fs");
@@ -143,6 +144,32 @@ function keystoreOrNull() {
 const VERSION_CODE_PATTERN = /^(\s*versionCode)\s+\d+/m;
 const VERSION_NAME_PATTERN = /^(\s*versionName)\s+["'].*?["']/m;
 
+/**
+ * One APK carries every Android ABI, so the same release installs on real
+ * phones (arm64/arm32) AND on x86 emulators — "device not supported" can never
+ * happen. Gradle tuning keeps the 4-ABI CI build within runner limits.
+ */
+const GRADLE_TUNING = {
+  "org.gradle.jvmargs": "-Xmx4096m -XX:MaxMetaspaceSize=1024m",
+  "org.gradle.parallel": "true",
+  "org.gradle.caching": "true",
+  reactNativeArchitectures: "armeabi-v7a,arm64-v8a,x86,x86_64",
+};
+
+function withGradleTuning(config) {
+  return withGradleProperties(config, (cfg) => {
+    for (const [key, value] of Object.entries(GRADLE_TUNING)) {
+      const existing = cfg.modResults.find((p) => p.type === "property" && p.key === key);
+      if (existing) {
+        existing.value = value;
+      } else {
+        cfg.modResults.push({ type: "property", key, value });
+      }
+    }
+    return cfg;
+  });
+}
+
 function patchVersion(contents) {
   const versionCode = process.env.PERIOD_TIMER_VERSION_CODE ?? "1";
   if (!/^\d+$/.test(versionCode)) {
@@ -192,6 +219,14 @@ function withReleaseSigning(config) {
       contents = contents
         .replace(SIGNING_DEBUG_BLOCK, `${SIGNING_DEBUG_BLOCK}\n${RELEASE_SIGNING_BLOCK}`)
         .replace(RELEASE_DEBUG_SIGNING, "            signingConfig signingConfigs.release");
+    } else {
+      // Guardrail: a debug-signed APK cannot install over any published
+      // release (signature mismatch). The CI tag build is the supported way
+      // to produce a distributable APK.
+      console.warn(
+        "withPeriodTimerAndroid: PERIOD_TIMER_KEYSTORE is not set — assembleRelease will be DEBUG-signed. " +
+          "Fine for local testing; for a distributable APK use the CI tag build (git tag vX.Y.Z && git push --tags).",
+      );
     }
 
     cfg.modResults.contents = contents;
@@ -271,6 +306,7 @@ module.exports = function withPeriodTimerAndroid(config) {
   config = withManifestEdits(config);
   config = withMainApplicationRegistration(config);
   config = copyKotlinAndResources(config);
+  config = withGradleTuning(config);
   config = withReleaseSigning(config);
   return config;
 };

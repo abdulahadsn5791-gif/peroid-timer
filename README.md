@@ -90,36 +90,44 @@ Run the app:
 ```sh
 bunx expo start        # dev server
 bunx expo run:android  # prebuild if needed, build, install on a device/emulator
-```
+```### Release APK (CI is the supported path)
 
-### Release APK
+**Ship builds come from GitHub Actions — not from this machine.** A local
+`./gradlew assembleRelease` without the keystore env vars produces a
+DEBUG-signed APK that can never install over a published release (signature
+mismatch), and this repo's generated `android/` is disposable. The plugin now
+warns loudly when a build would be debug-signed.
 
-For a local build, always switch to release mode first. It drops the Expo dev
-client so it is not compiled into a distributed APK.
-
-```sh
-PERIOD_TIMER_RELEASE=1 bun scripts/release-mode.mjs   # shipping: drop dev client
-bunx expo prebuild
-cd android && ./gradlew assembleRelease
-# android/app/build/outputs/apk/release/app-release.apk
-```
-
-**The env var is the whole switch.** The script reads `PERIOD_TIMER_RELEASE=1`;
-run it bare and it does the opposite, putting the dev client back for
-day-to-day `expo run:android` work:
+To ship a release:
 
 ```sh
-bun scripts/release-mode.mjs   # dev: keep expo-dev-client
+# 1. Bump expo.version in app.json if needed
+git tag v1.2.0 && git push origin v1.2.0
+# 2. GitHub Actions builds the signed 4-ABI APK and publishes the release
+# 3. Download from https://github.com/abdulahadsn5791-gif/peroid-timer/releases/latest
 ```
 
-It rewrites the `expo.autolinking` block in `package.json` in place, so commit
-the dev-mode version rather than the release-mode one.
+The tag drives versionName/versionCode (`v1.2.0` → `1.2.0` / `10200`), the
+keystore comes from repo secrets, and the APK carries **all four ABIs**
+(`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`) — one file that installs on real
+phones and x86 emulators alike.
 
-Release builds are signed with the real key only when one is supplied, and the
-Expo dev client is dropped from them — see `scripts/release-mode.mjs` and
-`plugins/withPeriodTimerAndroid.js`. Without a keystore, `assembleRelease` falls
-back to the debug key, which is fine for local testing but must not be
-published.
+### Local dev builds
+
+For day-to-day work use the dev client; it is intentionally excluded only from
+release builds:
+
+```sh
+bunx expo run:android   # debug build, hot reload, dev menu
+bun test
+bun typecheck
+```
+
+`bun scripts/release-mode.mjs` toggles `expo.autolinking` in `package.json`
+(bare = dev mode, the committed state; `PERIOD_TIMER_RELEASE=1` = release mode,
+used only inside CI). If you ran a release prebuild locally, restore dev mode
+with bare `bun scripts/release-mode.mjs` and `rm -rf android` before
+continuing.
 
 ### Cutting a release
 
