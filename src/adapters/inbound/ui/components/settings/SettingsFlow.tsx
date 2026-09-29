@@ -3,10 +3,9 @@ import { BackHandler, KeyboardAvoidingView, Platform, StyleSheet, Text, View } f
 import Constants from "expo-constants";
 import Svg, { Path, Circle as SCircle, Line } from "react-native-svg";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideInRight, SlideOutDown, SlideOutRight } from "react-native-reanimated";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { tokens, shadow } from "../../design-system/tokens";
+import { tokens } from "../../design-system/tokens";
 import type { AppDeps } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
 import { RING_PALETTES } from "@domain/value-objects/RingPalette";
@@ -21,8 +20,6 @@ interface Props {
   deps: AppDeps;
   /** Called when the sheet is fully dismissed (after close-or-save). */
   onDismiss: () => void;
-  /** Ref to the scene `BlurTargetView` so the panel gets a real Android blur. */
-  sceneBlur: React.RefObject<View | null>;
   isWide: boolean;
 }
 
@@ -69,7 +66,7 @@ function CloseIcon({ color }: { color: string }) {
  * there is far less accidental touching while scrolling. "Save & apply" is
  * pinned to the bottom bar on every page.
  */
-export function SettingsFlow({ draft, deps, onDismiss, sceneBlur, isWide }: Props) {
+export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
   const actions = deps.settingsActions;
   const accent = draft.accentColor;
   const insets = useSafeAreaInsets();
@@ -110,32 +107,12 @@ export function SettingsFlow({ draft, deps, onDismiss, sceneBlur, isWide }: Prop
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="box-none">
-      {/* Scrim + tap-outside-to-dismiss, like the old sheet's backdrop. */}
-      <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(200)} style={StyleSheet.absoluteFill}>
-        <View style={[StyleSheet.absoluteFill, styles.scrim]} />
-      </Animated.View>
-      <PressableScale
-        onPress={() => {
-          actions.close();
-          onDismiss();
-        }}
-        haptic="none"
-        style={StyleSheet.absoluteFill}
-        accessibilityLabel="Close settings"
-      />
-
       <Animated.View
         entering={SlideInDown.springify().damping(20).stiffness(190)}
         exiting={SlideOutDown.duration(220)}
-        style={[styles.panel, shadow(2)]}
+        style={styles.panel}
       >
-        <BlurView
-          intensity={56}
-          tint="light"
-          blurTarget={sceneBlur}
-          blurMethod="dimezisBlurViewSdk31Plus"
-          style={styles.panelBlur}
-        >
+        <View style={styles.panelSurface}>
           <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
             {nav.route === "root" ? (
               <>
@@ -257,7 +234,7 @@ export function SettingsFlow({ draft, deps, onDismiss, sceneBlur, isWide }: Prop
             </PressableScale>
             <Text style={styles.dirtyNote}>{draft.dirty ? "Unsaved changes" : "All changes saved"}</Text>
           </View>
-        </BlurView>
+        </View>
       </Animated.View>
     </View>
   );
@@ -267,20 +244,14 @@ const SAVE_BAR_HEIGHT = 92;
 
 const styles = StyleSheet.create({
   overlay: {
-    justifyContent: "flex-end",
-  },
-  scrim: {
-    backgroundColor: "rgba(0,0,0,0.32)",
+    backgroundColor: tokens.color.white,
   },
   panel: {
     flex: 1,
-    marginTop: 24,
-    borderTopLeftRadius: tokens.radius.xl,
-    borderTopRightRadius: tokens.radius.xl,
-    overflow: "hidden",
   },
-  panelBlur: {
+  panelSurface: {
     flex: 1,
+    backgroundColor: tokens.color.white,
   },
   header: {
     flexDirection: "row",
@@ -398,7 +369,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: tokens.color.hairlineStrong,
-    backgroundColor: "rgba(255,255,255,0.65)",
+    backgroundColor: tokens.color.white,
   },
   saveBtn: {
     minHeight: tokens.tap,

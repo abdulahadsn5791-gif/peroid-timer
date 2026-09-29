@@ -29,9 +29,9 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
   const draft = useSettingsDraft(deps);
 
   /**
-   * The wallpaper-only target keeps the frosted chips over the photo cheap and
-   * scoped; the scene-wide target captures everything behind the settings sheet
-   * so its glass panel can truly blur the app on Android too.
+   * The wallpaper-only target keeps the frosted chips over the photo cheap
+   * and scoped; the scene-wide target wraps the home content. Settings is a
+   * fully opaque page and samples neither.
    */
   const wallpaperBlur = useRef<RNView | null>(null);
   const sceneBlur = useRef<RNView | null>(null);
@@ -122,12 +122,10 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
 
       <FlashLayer active={flash.key > 0} periodName={flash.periodName} flashKey={flash.key} />
 
-      {/* Rendered OUTSIDE the scene BlurTargetView — the panel's own BlurView
-          samples this target, and nesting the sampler inside the sampled tree
-          crashes natively on Android (dimezis recursion). The old sheet sat
-          here too; v1.3.0/1.3.1 crashed because the flow moved inside. */}
+      {/* Full-screen opaque settings — no blur, so it never interacts with
+          the scene's BlurTargetView. */}
       {sheetOpen && draft ? (
-        <SettingsFlow draft={draft} deps={deps} onDismiss={dismiss} sceneBlur={sceneBlur} isWide={isWide} />
+        <SettingsFlow draft={draft} deps={deps} onDismiss={dismiss} isWide={isWide} />
       ) : null}
     </SafeAreaView>
   );
