@@ -59,11 +59,11 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
   );
 }
 
-/** Inset-grouped card (iOS Settings style). */
+/** Inset-grouped card (iOS Settings style). Flat fill, no border. */
 export function Card({ children, style, pad }: { children: ReactNode; style?: ViewStyle; pad?: boolean }) {
   const pal = usePal();
   return (
-    <View style={[styles.card, { backgroundColor: pal.surface, borderColor: pal.hairline }, pad && styles.cardContentPad, style]}>
+    <View style={[styles.card, { backgroundColor: pal.surface }, pad && styles.cardContentPad, style]}>
       {children}
     </View>
   );
@@ -173,10 +173,10 @@ export function GhostButton({
     <PressableScale
       onPress={onPress}
       haptic={danger ? "medium" : "selection"}
-      style={[styles.ghostBtn, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }, flex && styles.btnFlex]}
+      style={[styles.ghostBtn, { backgroundColor: pal.surfaceAlt }, flex && styles.btnFlex]}
       accessibilityRole="button"
     >
-      <Text style={[styles.ghostBtnText, { color: danger ? tokens.color.danger : pal.textPrimary }]}>{label}</Text>
+      <Text style={[styles.ghostBtnText, { color: danger ? pal.danger : pal.textPrimary }]}>{label}</Text>
     </PressableScale>
   );
 }
@@ -187,7 +187,7 @@ export function DashedAddButton({ label, onPress }: { label: string; onPress: ()
     <PressableScale
       onPress={onPress}
       haptic="selection"
-      style={[styles.addBtn, { borderColor: pal.disabled, backgroundColor: pal.inputBg }]}
+      style={[styles.addBtn, { borderColor: pal.disabled, backgroundColor: "transparent" }]}
       accessibilityRole="button"
     >
       <Text style={[styles.addBtnText, { color: pal.textSecondary }]}>{label}</Text>
@@ -223,7 +223,7 @@ export function WeekdayTabs({
             key={label}
             onPress={() => onSelect(index)}
             haptic="selection"
-            style={[styles.weekdayTab, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }, isActive && { backgroundColor: accent, borderColor: "transparent" }]}
+            style={[styles.weekdayTab, { backgroundColor: pal.surfaceAlt }, isActive && { backgroundColor: accent }]}
             accessibilityRole="tab"
             accessibilityLabel={`${label}: ${count} ${count === 1 ? "period" : "periods"}`}
           >
@@ -231,8 +231,9 @@ export function WeekdayTabs({
             <View
               style={[
                 styles.weekdayDot,
-                count === 0 && styles.weekdayDotEmpty,
-                count > 0 && { backgroundColor: isActive ? tokens.color.white : accent },
+                { backgroundColor: pal.disabled },
+                count === 0 && { backgroundColor: "transparent", borderWidth: 1, borderColor: pal.disabled },
+                count > 0 && { backgroundColor: isActive ? tokens.color.white : accent, borderWidth: 0 },
               ]}
             />
           </PressableScale>
@@ -369,7 +370,7 @@ function TimeEditor({
   const decMinute = () => compose(hour12, minutes === 0 ? 59 : minutes - 1, period);
 
   return (
-    <View style={[styles.timeEditor, { backgroundColor: pal.inputBg, borderColor: pal.hairlineStrong, borderWidth: StyleSheet.hairlineWidth }]}>
+    <View style={[styles.timeEditor, { backgroundColor: pal.inputBg }]}>
       <View style={styles.timeEditorHeader}>
         <Text style={[styles.timeEditorTitle, { color: pal.textSecondary }]}>{field === "start" ? "Set start" : "Set end"}</Text>
         <Text style={[styles.timeEditorLive, { color: accent }]}>{minutesOfDayToLabel(base)}</Text>
@@ -650,8 +651,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: tokens.color.surface2,
     borderRadius: tokens.radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairline,
     overflow: "hidden",
   },
   cardRow: { paddingHorizontal: tokens.spacing.lg, paddingVertical: tokens.spacing.sm },
@@ -699,9 +698,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing.lg,
     paddingVertical: 10,
     borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.surface2,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
     minHeight: tokens.tap,
     alignItems: "center",
     justifyContent: "center",
@@ -737,9 +733,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: tokens.tap,
     borderRadius: tokens.radius.sm,
-    backgroundColor: tokens.color.surface2,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
@@ -755,12 +748,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
-  weekdayDotEmpty: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
   },
   // Blur slider
   sliderTrack: {
@@ -940,8 +927,6 @@ const styles = StyleSheet.create({
     height: tokens.tap,
     borderRadius: tokens.radius.sm,
     backgroundColor: tokens.color.surface2,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -962,8 +947,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: tokens.radius.sm,
     overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
   },
   ampmBtn: {
     minWidth: 56,

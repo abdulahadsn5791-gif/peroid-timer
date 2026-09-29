@@ -74,10 +74,10 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
                 <PressableScale
                   onPress={() => actions.clearAlarmSound()}
                   haptic="selection"
-                  style={[styles.pickBtn, { borderColor: pal.hairlineStrong, backgroundColor: pal.surface }]}
+                  style={[styles.pickBtn, { borderColor: "transparent", backgroundColor: pal.surfaceAlt }]}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.pickBtnText, { color: tokens.color.danger }]}>Reset</Text>
+                  <Text style={[styles.pickBtnText, { color: pal.danger }]}>Reset</Text>
                 </PressableScale>
               }
               last
@@ -98,7 +98,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: 8,
     borderRadius: tokens.radius.sm,
-    borderWidth: 1,
     backgroundColor: tokens.color.surface2,
     minHeight: tokens.tap,
     alignItems: "center",

@@ -144,6 +144,8 @@ export interface ThemePalette {
   disabled: string;
   /** Switch track while off. */
   toggleOff: string;
+  /** Destructive accent — brighter on dark so it reads on black. */
+  danger: string;
 }
 
 /**
@@ -167,6 +169,7 @@ export const themePalette = (theme: ThemeName): ThemePalette => {
       onAccent: "#FFFFFF",
       disabled: "rgba(235,235,245,0.18)",
       toggleOff: "rgba(120,120,128,0.32)",
+      danger: "#FF453A",
     };
   }
   return {
@@ -182,5 +185,6 @@ export const themePalette = (theme: ThemeName): ThemePalette => {
     onAccent: "#FFFFFF",
     disabled: "rgba(60,60,67,0.18)",
     toggleOff: "rgba(0,0,0,0.10)",
+    danger: "#DC2626",
   };
 };

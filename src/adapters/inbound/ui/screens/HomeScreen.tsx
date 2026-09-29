@@ -66,7 +66,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           backgroundColor: view.hasWallpaper
             ? "#000"
             : view.theme === "dark"
-              ? "#111827"
+              ? "#000000"
               : tokens.color.canvas,
         },
       ]}

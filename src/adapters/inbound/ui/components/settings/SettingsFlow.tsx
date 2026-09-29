@@ -239,7 +239,7 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
             style={[
               styles.saveBar,
               draft.theme === "dark" && styles.saveBarDark,
-              { paddingBottom: insets.bottom + 10 },
+              { paddingBottom: insets.bottom + 10, borderTopColor: pal.hairline },
             ]}
           >
             <PressableScale
@@ -305,8 +305,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.05)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.10)",
   },
   closeBtnDark: {
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -393,12 +391,9 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spacing.md,
     gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.10)",
     backgroundColor: "transparent",
   },
-  saveBarDark: {
-    borderTopColor: "rgba(255,255,255,0.10)",
-  },
+  saveBarDark: {},
   saveBtn: {
     minHeight: tokens.tap,
     borderRadius: tokens.radius.md,
@@ -413,7 +408,6 @@ const styles = StyleSheet.create({
   dirtyNote: {
     textAlign: "center",
     fontSize: tokens.text.micro,
-    color: tokens.color.text.tertiary,
   },
   dirtyNoteDark: { color: "rgba(235,235,245,0.30)" },
 });

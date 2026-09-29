@@ -89,7 +89,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
               haptic="selection"
               style={[styles.halfBtn, { backgroundColor: pal.inputBg }, styles.btnFlex]}
               accessibilityRole="button"
-            >                  <Text style={[styles.halfBtnText, { color: tokens.color.danger }]}>Remove</Text>
+            >                  <Text style={[styles.halfBtnText, { color: pal.danger }]}>Remove</Text>
             </PressableScale>
           </View>
 
@@ -144,7 +144,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
                   key={palette.id}
                   onPress={() => actions.previewPalette(index)}
                   haptic="selection"
-                  style={[styles.paletteCard, basePaletteStyle(accent, selected)].filter(Boolean) as ViewStyle[]}
+                  style={[styles.paletteCard, basePaletteStyle(accent, selected, pal.hairlineStrong)].filter(Boolean) as ViewStyle[]}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                 >
@@ -192,14 +192,14 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
   );
 }
 
-function basePaletteStyle(accent: string, selected: boolean): ViewStyle | undefined {
+function basePaletteStyle(accent: string, selected: boolean, fallbackBorder: string): ViewStyle | undefined {
   if (selected) {
     return {
       borderColor: accent,
       borderWidth: 1.5,
     };
   }
-  return { borderColor: tokens.color.hairlineStrong, borderWidth: 1 };
+  return { borderColor: fallbackBorder, borderWidth: 1 };
 }
 
 const styles = StyleSheet.create({
