@@ -1,19 +1,18 @@
-import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { setAudioModeAsync } from "expo-audio";
 import { NativeModules } from "react-native";
 import type { SoundPort } from "@application/ports/outbound/SoundPort";
 
-const BUILTIN_TONE = require("../../../../assets/period-end.wav");
-
 /**
- * End-of-period alarm sound. Plays the user's chosen ringtone
- * (settings.alarmSoundUri) and falls back to the bundled three-beat tone
- * (assets/period-end.wav) when no custom sound is set or it fails to load.
+ * End-of-period alarm control.
+ *
+ * The tone itself is NOT played from here. It belongs to the native alarm
+ * notification channel (`EndAlertNotifier`), which plays on the alarm stream and
+ * still rings when the app process is dead. Playing a JS copy as well produced
+ * two overlapping tones, and only the native one could be stopped from the
+ * notification's "Stop alarm" action — the JS tone kept ringing with no way to
+ * silence it. This port therefore only stops the alarm.
  */
 export class ExpoAudioPlayer implements SoundPort {
-  private readonly builtinPlayer = createAudioPlayer(BUILTIN_TONE);
-  private customPlayer: ReturnType<typeof createAudioPlayer> | null = null;
-  private customUri: string | null = null;
-
   async prepare(): Promise<void> {
     await setAudioModeAsync({
       playsInSilentMode: true,
@@ -22,52 +21,7 @@ export class ExpoAudioPlayer implements SoundPort {
     });
   }
 
-  /** Swaps the custom ringtone at runtime (called on settings changes). */
-  setCustomSource(uri: string | null): void {
-    if (uri === this.customUri) return;
-    this.customUri = uri;
-    try {
-      this.customPlayer?.release();
-    } catch {
-      // player already released
-    }
-    this.customPlayer = null;
-    if (uri) {
-      try {
-        this.customPlayer = createAudioPlayer({ uri });
-      } catch {
-        this.customPlayer = null;
-      }
-    }
-  }
-
-  async playEndSound(): Promise<void> {
-    const player = this.customUri ? this.customPlayer : this.builtinPlayer;
-    if (!player) return;
-    try {
-      player.seekTo(0);
-      player.play();
-    } catch {
-      // Sound is best-effort; the native alert notification carries its own tone.
-      try {
-        this.builtinPlayer.seekTo(0);
-        this.builtinPlayer.play();
-      } catch {
-        // give up silently
-      }
-    }
-  }
-
   async stopEndSound(): Promise<void> {
-    for (const player of [this.customPlayer, this.builtinPlayer]) {
-      if (!player) continue;
-      try {
-        player.pause();
-        player.seekTo(0);
-      } catch {
-        // player already released
-      }
-    }
     // The loud background alarm lives natively; ask it to stop as well.
     try {
       NativeModules.PeriodTimerScheduler?.stopAlarm();

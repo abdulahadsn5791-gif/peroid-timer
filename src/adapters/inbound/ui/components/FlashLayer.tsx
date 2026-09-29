@@ -20,33 +20,53 @@ interface Props {
  *
  * The toast also carries the "Stop alarm" control — without it the only way to
  * end a ringing tone is the notification shade, which is easy to miss.
+ *
+ * The pulse and the toast animate separately on purpose. The pulse is
+ * decoration that runs 0.85 -> 0 three times and therefore ENDS at 0, so the
+ * toast used to inherit that opacity and faded out of sight (taking the button
+ * with it) about two seconds after the period ended. The toast now fades in on
+ * its own and holds, staying readable and tappable until the alarm is stopped.
  */
 export function FlashLayer({ active, periodName, flashKey, alarmEnabled, onStopAlarm }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!active) return;
-    opacity.stopAnimation();
+    pulse.stopAnimation();
+    pulse.setValue(0);
     const pulses: Animated.CompositeAnimation[] = [];
     for (let i = 0; i < 3; i++) {
-      pulses.push(Animated.timing(opacity, { toValue: 0.85, duration: 300, useNativeDriver: true }));
-      pulses.push(Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }));
+      pulses.push(Animated.timing(pulse, { toValue: 0.85, duration: 300, useNativeDriver: true }));
+      pulses.push(Animated.timing(pulse, { toValue: 0, duration: 300, useNativeDriver: true }));
       if (i < 2) pulses.push(Animated.delay(150));
     }
     Animated.sequence(pulses).start();
-  }, [active, flashKey, opacity]);
+  }, [active, flashKey, pulse]);
+
+  useEffect(() => {
+    if (!periodName) {
+      toastOpacity.setValue(0);
+      return;
+    }
+    toastOpacity.stopAnimation();
+    Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [periodName, flashKey, toastOpacity]);
 
   return (
-    <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { opacity: active ? opacity : 0 }]}>
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Animated.View
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: tokens.color.danger, opacity: 0.14 },
+          { backgroundColor: tokens.color.danger, opacity: pulse },
         ]}
       />
       {periodName ? (
-        <View pointerEvents="box-none" style={styles.toastWrap}>
+        <Animated.View
+          pointerEvents="box-none"
+          style={[styles.toastWrap, { opacity: toastOpacity }]}
+        >
           <View style={styles.toast}>
             <BlurView intensity={48} tint="dark" style={StyleSheet.absoluteFill} />
             <Text style={styles.toastText}>{periodName} ended</Text>
@@ -64,9 +84,9 @@ export function FlashLayer({ active, periodName, flashKey, alarmEnabled, onStopA
               </Pressable>
             ) : null}
           </View>
-        </View>
+        </Animated.View>
       ) : null}
-    </Animated.View>
+    </View>
   );
 }
 

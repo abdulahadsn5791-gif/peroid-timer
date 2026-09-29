@@ -34,10 +34,19 @@ Honest scope so nobody discovers these the hard way.
 - The ringtone follows the phone's **alarm volume** slider, not media volume.
   The channel is republished with `USAGE_ALARM` attributes before each alert
   because Android 8+ ignores a notification builder's `setSound` once the
-  channel exists — the channel's own sound is what actually plays.
+  channel exists — the channel's own sound is what actually plays. Android also
+  ignores a new ringtone passed to an existing channel, so the channel is
+  deleted and recreated whenever the chosen ringtone no longer matches, which is
+  what makes a changed selection take effect.
+- The tone is played by the native alarm channel **only**. An earlier build also
+  played a copy from JS (expo-audio), which meant two overlapping tones and one
+  that nobody could stop: the notification's "Stop alarm" action can only cancel
+  the native one, so the JS tone rang on with no way to silence it. JS detects
+  the period end for the in-app flash and nothing else.
 - **Stopping it** takes two routes: a "Stop alarm" action on the notification
   and a matching button in the app's end-of-period toast. Cancelling the
-  notification is what silences the channel sound. Stopping one alarm never
+  notification is what silences the channel sound, and because that is the only
+  source, either button stops the alarm completely. Stopping one alarm never
   disables the schedule; the next period end still fires.
 
 ## The two alert toggles are independent

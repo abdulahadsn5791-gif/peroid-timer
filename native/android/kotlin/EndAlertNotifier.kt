@@ -43,6 +43,20 @@ object EndAlertNotifier {
      */
     fun applyChannelSound(context: Context, alarmSoundUri: String?) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val uri = resolveAlarmUri(alarmSoundUri)
+
+        // Android only honours the sound a channel is FIRST created with; a later
+        // createNotificationChannel with a different ringtone is silently ignored.
+        // So drop the channel whenever the wanted ringtone no longer matches, which
+        // is what makes picking a new ringtone take effect. Safe here because this
+        // runs immediately before the alert is posted.
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            val existing = manager.getNotificationChannel(CHANNEL_ID)
+            if (existing != null && existing.sound != uri) {
+                manager.deleteNotificationChannel(CHANNEL_ID)
+            }
+        }
+
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Period-end alarm",
@@ -54,7 +68,7 @@ object EndAlertNotifier {
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             setBypassDnd(false)
             setSound(
-                resolveAlarmUri(alarmSoundUri),
+                uri,
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)

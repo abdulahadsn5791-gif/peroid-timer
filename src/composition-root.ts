@@ -171,13 +171,6 @@ export function createApp(): AppDeps {
   const checkPeriodEnd = new CheckForPeriodEndUseCase(clock, settingsRepository, sound);
   const applyPlan = new ApplyBackgroundPlanUseCase(settingsRepository, planner, sound);
 
-  // Keep the JS-side audio player on the committed ringtone (in-app alerts);
-  // the native alarm uses the same URI from the snapshot (closed-app alerts).
-  const initialSettings = settingsRepository.load();
-  if ("setCustomSource" in sound) {
-    (sound as { setCustomSource(uri: string | null): void }).setCustomSource(initialSettings.alarmSoundUri);
-  }
-
   const settingsActions: SettingsActions = {
     previewPalette: (i) => void previewPalette.preview(i),
     previewAccent: (hex) => void previewAccent.preview(hex),
@@ -196,18 +189,8 @@ export function createApp(): AppDeps {
     setWeekday: (w) => void setWeekday.setWeekday(w),
     clearDay: () => void clearDay.clearDay(),
     copyToAllDays: () => void copyToAllDays.copyToAllDays(),
-    pickAlarmSound: () =>
-      void pickAlarmSound.pick().then((vm) => {
-        if ("setCustomSource" in sound) {
-          (sound as { setCustomSource(uri: string | null): void }).setCustomSource(vm.alarmSoundUri);
-        }
-      }),
-    clearAlarmSound: () => {
-      void clearAlarmSound.clear();
-      if ("setCustomSource" in sound) {
-        (sound as { setCustomSource(uri: string | null): void }).setCustomSource(null);
-      }
-    },
+    pickAlarmSound: () => void pickAlarmSound.pick(),
+    clearAlarmSound: () => void clearAlarmSound.clear(),
     pickWallpaper: () => pickWallpaper.pick().then(() => undefined),
     removeWallpaper: () => void removeWallpaper.removeWallpaper(),
     save: () => saveSettings.save(),

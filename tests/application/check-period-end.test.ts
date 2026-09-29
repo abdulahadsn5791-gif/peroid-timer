@@ -22,30 +22,21 @@ function setup(nowMs: number, soundEnabled = true, notificationsEnabled = true) 
 }
 
 describe("CheckForPeriodEndUseCase", () => {
-  test("fires once with sound when a period just ended", async () => {
-    const { uc, repo, sound } = setup(at(8, 30, 0).getTime());
+  test("reports the period that just ended", async () => {
+    const { uc, repo } = setup(at(8, 30, 0).getTime());
     const result = await uc.tick();
 
     expect(result.justEnded).toBe(true);
     expect(result.periodName).toBe("Math");
-    expect(sound.playCount).toBe(1);
     expect(repo.load().lastNotifiedKey).toBe("0:p1");
   });
 
   test("does not refire on later ticks", async () => {
-    const { uc, clock, sound } = setup(at(8, 30, 0).getTime());
+    const { uc, clock } = setup(at(8, 30, 0).getTime());
     await uc.tick();
     clock.setNow(at(8, 30, 1).getTime());
     const result = await uc.tick();
     expect(result.justEnded).toBe(false);
-    expect(sound.playCount).toBe(1);
-  });
-
-  test("stays silent when sound is disabled", async () => {
-    const { uc, sound } = setup(at(8, 30, 0).getTime(), false);
-    const result = await uc.tick();
-    expect(result.justEnded).toBe(true);
-    expect(sound.playCount).toBe(0);
   });
 
   test("no event mid-period", async () => {
@@ -54,17 +45,25 @@ describe("CheckForPeriodEndUseCase", () => {
     expect(result.justEnded).toBe(false);
   });
 
-  test("stays silent when notifications are disabled", async () => {
-    const { uc, sound } = setup(at(8, 30, 0).getTime(), true, false);
-    const result = await uc.tick();
-    expect(result.justEnded).toBe(true);
-    expect(sound.playCount).toBe(0);
+  // The tone is owned by the native alarm channel. A JS copy meant two
+  // overlapping sounds, and only the native one could be stopped from the
+  // notification action, so the JS tone rang with no way to silence it.
+  test("never plays a tone from JS, whatever the toggles say", async () => {
+    for (const [sound, notifications] of [
+      [true, true],
+      [false, true],
+      [true, false],
+      [false, false],
+    ]) {
+      const { uc, sound: fake } = setup(at(8, 30, 0).getTime(), sound, notifications);
+      await uc.tick();
+      expect(fake.playCount).toBe(0);
+    }
   });
 
   test("stop() silences a ringing alarm", async () => {
     const { uc, sound } = setup(at(8, 30, 0).getTime());
     await uc.tick();
-    expect(sound.playCount).toBe(1);
     await uc.stop();
     expect(sound.stopCount).toBe(1);
   });
