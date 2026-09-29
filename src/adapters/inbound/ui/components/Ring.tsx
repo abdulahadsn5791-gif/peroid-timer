@@ -32,6 +32,11 @@ interface Props {
  */
 export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light", style }: Props) {
   const adaptive = adaptiveColors(hasWallpaper, theme);
+  // On a photo the blur hides stroke weight, so the band can stay bold; on a
+  // flat canvas the same weight reads bulky — slim it down there.
+  const bandStroke = hasWallpaper ? 8 : 6;
+  const tickStroke = hasWallpaper ? 1.8 : 1.4;
+  const tickMajorStroke = hasWallpaper ? 3 : 2.2;
   const chipFont = size * 0.05;
   const timeSize = vm.showHours ? size * 0.15 : size * 0.21;
   const statusSize = size * 0.046;
@@ -80,7 +85,7 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light",
           x2={100 + inner * cos}
           y2={100 + inner * sin}
           stroke={active ? vm.ringHex : major ? adaptive.ringTickStrong : adaptive.ringTick}
-          strokeWidth={major ? 3 : 1.8}
+          strokeWidth={major ? tickMajorStroke : tickStroke}
           strokeLinecap="round"
           opacity={active ? 1 : 0.85}
         />,
@@ -100,7 +105,7 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light",
         viewBox="0 0 200 200"
         style={{ position: "absolute", top: 0, left: 0, transform: [{ rotate: "-90deg" }] }}
       >
-        <Circle cx={100} cy={100} r={92} fill="none" stroke={adaptive.ringTrack} strokeWidth={8} />
+        <Circle cx={100} cy={100} r={92} fill="none" stroke={adaptive.ringTrack} strokeWidth={bandStroke} />
         {ticks}
         <AnimatedCircle
           cx={100}
@@ -108,13 +113,13 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light",
           r={92}
           fill="none"
           stroke={vm.ringHex}
-          strokeWidth={8}
+          strokeWidth={bandStroke}
           strokeLinecap="round"
           strokeDasharray={RING_CIRCUMFERENCE}
           animatedProps={arcProps}
         />
-        <AnimatedCircle r={8} fill={vm.ringHex} fillOpacity={0.22} animatedProps={tipProps} />
-        <AnimatedCircle r={4.5} fill={vm.ringHex} animatedProps={tipProps} />
+        <AnimatedCircle r={hasWallpaper ? 8 : 7} fill={vm.ringHex} fillOpacity={0.22} animatedProps={tipProps} />
+        <AnimatedCircle r={hasWallpaper ? 4.5 : 4} fill={vm.ringHex} animatedProps={tipProps} />
       </Svg>
       <View
         style={[

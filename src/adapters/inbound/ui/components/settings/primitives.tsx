@@ -60,9 +60,13 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
 }
 
 /** Inset-grouped card (iOS Settings style). */
-export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+export function Card({ children, style, pad }: { children: ReactNode; style?: ViewStyle; pad?: boolean }) {
   const pal = usePal();
-  return <View style={[styles.card, { backgroundColor: pal.surface, borderColor: pal.hairline }, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, { backgroundColor: pal.surface, borderColor: pal.hairline }, pad && styles.cardContentPad, style]}>
+      {children}
+    </View>
+  );
 }
 
 export function CardRow({ children }: { children: ReactNode }) {
@@ -646,6 +650,10 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.color.hairline,
     marginLeft: tokens.spacing.lg,
   },
+  cardContentPad: {
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.md,
+  },
   hint: {
     fontSize: tokens.text.micro,
     color: tokens.color.text.tertiary,
@@ -657,6 +665,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: tokens.spacing.lg,
     minHeight: tokens.tap,
+    paddingHorizontal: tokens.spacing.lg,
     paddingVertical: tokens.spacing.sm,
     alignSelf: "stretch",
   },
@@ -673,6 +682,7 @@ const styles = StyleSheet.create({
   rowSeparator: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: tokens.color.hairline,
+    marginLeft: tokens.spacing.lg,
   },
   // Buttons
   ghostBtn: {

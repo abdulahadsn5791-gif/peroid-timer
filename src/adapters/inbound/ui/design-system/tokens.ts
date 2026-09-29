@@ -82,24 +82,28 @@ const wallpaperColors = () => ({
   ringTickStrong: "rgba(255,255,255,0.65)",
 });
 
-/** Text color used by the big frosted hero when NO wallpaper is set. */
+/**
+ * Bare-look text colors, tuned per theme in the style of modern OS dark
+ * modes (iOS / One UI): pure black canvas, neutral gray elevated surfaces,
+ * and white text with opacity steps instead of tinted grays.
+ */
 export const adaptiveColors = (hasWallpaper: boolean, theme: ThemeName = "light") => {
   if (hasWallpaper) return wallpaperColors();
   if (theme === "dark") {
     return {
-      primary: "rgba(255,255,255,0.95)",
-      secondary: "rgba(255,255,255,0.62)",
+      primary: "#FFFFFF",
+      secondary: "rgba(235,235,245,0.62)",
       ringTrack: "rgba(255,255,255,0.10)",
-      ringTick: "rgba(255,255,255,0.18)",
-      ringTickStrong: "rgba(255,255,255,0.34)",
+      ringTick: "rgba(255,255,255,0.16)",
+      ringTickStrong: "rgba(235,235,245,0.32)",
     };
   }
   return {
     primary: tokens.color.text.primary,
-    secondary: tokens.color.text.secondary,
-    ringTrack: "rgba(0,0,0,0.08)",
-    ringTick: "rgba(0,0,0,0.16)",
-    ringTickStrong: "rgba(0,0,0,0.26)",
+    secondary: "rgba(60,60,67,0.62)",
+    ringTrack: "rgba(60,60,67,0.10)",
+    ringTick: "rgba(60,60,67,0.18)",
+    ringTickStrong: "rgba(60,60,67,0.30)",
   };
 };
 
@@ -112,8 +116,8 @@ export const panelMaterial = (hasWallpaper: boolean, theme: ThemeName = "light")
   }
   if (theme === "dark") {
     return {
-      background: "#182234",
-      borderColor: "rgba(255,255,255,0.08)",
+      background: "#1C1C1E",
+      borderColor: "rgba(84,84,88,0.65)",
     };
   }
   return {
@@ -142,36 +146,37 @@ export interface ThemePalette {
 
 /**
  * Named palette for the no-wallpaper home look AND the settings pages, which
- * follow the same theme choice. Wallpaper mode never uses this — it stays
- * frosted glass over the photo.
+ * follow the same theme choice. Neutral, modern OS-style values (iOS/One UI
+ * flavor): pure black canvas, #1C1C1E elevated cards, Apple opacity-step
+ * labels. Wallpaper mode never uses this — it stays frosted glass.
  */
 export const themePalette = (theme: ThemeName): ThemePalette => {
   if (theme === "dark") {
     return {
-      canvas: "#0B1220",
-      surface: "#182234",
-      surfaceAlt: "#1F2B3F",
-      inputBg: "rgba(255,255,255,0.07)",
-      textPrimary: "rgba(255,255,255,0.94)",
-      textSecondary: "rgba(255,255,255,0.64)",
-      textTertiary: "rgba(255,255,255,0.42)",
-      hairline: "rgba(255,255,255,0.08)",
-      hairlineStrong: "rgba(255,255,255,0.14)",
+      canvas: "#000000",
+      surface: "#1C1C1E",
+      surfaceAlt: "#2C2C2E",
+      inputBg: "rgba(118,118,128,0.24)",
+      textPrimary: "#FFFFFF",
+      textSecondary: "rgba(235,235,245,0.60)",
+      textTertiary: "rgba(235,235,245,0.30)",
+      hairline: "rgba(84,84,88,0.60)",
+      hairlineStrong: "rgba(84,84,88,0.85)",
       onAccent: "#FFFFFF",
-      disabled: "rgba(255,255,255,0.24)",
+      disabled: "rgba(235,235,245,0.18)",
     };
   }
   return {
-    canvas: "#F3F4F6",
+    canvas: "#F2F2F7",
     surface: "#FFFFFF",
-    surfaceAlt: "#F3F4F6",
-    inputBg: "rgba(0,0,0,0.04)",
-    textPrimary: tokens.color.text.primary,
-    textSecondary: tokens.color.text.secondary,
-    textTertiary: tokens.color.text.tertiary,
-    hairline: tokens.color.hairline,
-    hairlineStrong: tokens.color.hairlineStrong,
+    surfaceAlt: "#F2F2F7",
+    inputBg: "rgba(118,118,128,0.12)",
+    textPrimary: "#000000",
+    textSecondary: "rgba(60,60,67,0.60)",
+    textTertiary: "rgba(60,60,67,0.30)",
+    hairline: "rgba(60,60,67,0.12)",
+    hairlineStrong: "rgba(60,60,67,0.22)",
     onAccent: "#FFFFFF",
-    disabled: tokens.color.text.disabled,
+    disabled: "rgba(60,60,67,0.18)",
   };
 };

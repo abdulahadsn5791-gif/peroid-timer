@@ -23,6 +23,7 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
       <PageBody isWide={isWide}>
         <SectionHeader title="Notifications" subtitle="Alerts when a period ends" />
         <Card>
+          <View style={styles.toggleStack}>
           <ToggleRow
             label="Period-end notifications"
             sublabel="End-of-period and boundary alerts"
@@ -31,11 +32,13 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
             onChange={(v) => actions.previewNotifications(v)}
             last
           />
+          </View>
         </Card>
         <Hint>Turn off to stop end-of-period and boundary alerts entirely.</Hint>
 
         <SectionHeader title="Sound" subtitle="What plays when a period ends" />
         <Card>
+          <View style={styles.toggleStack}>
           <ToggleRow
             label="Sound when a period ends"
             sublabel="Plays even when the app is closed"
@@ -44,6 +47,7 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
             onChange={(v) => actions.previewSound(v)}
             last
           />
+          </View>
         </Card>
 
         <SectionHeader title="Alarm ringtone" subtitle="Used by the end-of-period alarm" />
@@ -87,6 +91,9 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
 }
 
 const styles = StyleSheet.create({
+  toggleStack: {
+    paddingVertical: tokens.spacing.xs,
+  },
   pickBtn: {
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: 8,

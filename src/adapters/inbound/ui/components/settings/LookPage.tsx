@@ -163,6 +163,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
 
         <SectionHeader title="Colored elements" subtitle="Choose what the accent reaches" />
         <Card>
+          <View style={styles.toggleStack}>
           <ToggleRow
             label="Also color the clock numbers"
             value={draft.colorClock}
@@ -183,6 +184,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
             onChange={(v) => actions.previewColorActiveBars(v)}
             last
           />
+          </View>
         </Card>
         <Hint>Watch the home screen behind this page change as you toggle.</Hint>
       </PageBody>
@@ -201,6 +203,9 @@ function basePaletteStyle(accent: string, selected: boolean): ViewStyle | undefi
 }
 
 const styles = StyleSheet.create({
+  toggleStack: {
+    paddingVertical: tokens.spacing.xs,
+  },
   segmentedWrap: { padding: tokens.spacing.md },
   segmentedRow: {
     flexDirection: "row",
