@@ -57,6 +57,7 @@ export class PeriodTimerApp implements AppDeps {
   readonly openSettings: () => void;
   readonly settingsActions: SettingsActions;
   readonly checkPeriodEnd: () => Promise<PeriodEndTickResult>;
+  readonly stopAlarm: () => Promise<void>;
 
   private readonly settingsIsOpenRef: () => boolean;
   private readonly getDraftRef: () => SettingsDraftVM;
@@ -76,6 +77,7 @@ export class PeriodTimerApp implements AppDeps {
     subscribeDraft: (listener: () => void) => () => void;
     settingsActions: SettingsActions;
     checkPeriodEnd: () => Promise<PeriodEndTickResult>;
+    stopAlarm: () => Promise<void>;
     clock: SystemClock;
     applyPlan: ApplyBackgroundPlanUseCase;
     audio: ExpoAudioPlayer;
@@ -87,6 +89,7 @@ export class PeriodTimerApp implements AppDeps {
     this.subscribeDraftRef = deps.subscribeDraft;
     this.settingsActions = deps.settingsActions;
     this.checkPeriodEnd = deps.checkPeriodEnd;
+    this.stopAlarm = deps.stopAlarm;
     this.clock = deps.clock;
     this.applyPlan = deps.applyPlan;
     this.audio = deps.audio;
@@ -219,6 +222,7 @@ export function createApp(): AppDeps {
     subscribeDraft: (listener) => draftStore.subscribe(listener),
     settingsActions,
     checkPeriodEnd: () => checkPeriodEnd.tick(),
+    stopAlarm: () => checkPeriodEnd.stop(),
     clock,
     applyPlan,
     audio: sound,

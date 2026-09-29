@@ -10,10 +10,12 @@ import java.io.File
  * folder. This is data only — schedule *rules* never exist on the native side,
  * only "what is true at time T" lookups against these numbers.
  *
- * v5: weekly timetables. The snapshot always describes ONE resolved day;
+ * v6: weekly timetables. The snapshot always describes ONE resolved day;
  * an empty `segments` list means that weekday's preset is empty — no lectures,
  * so no alarms, no live notification, nothing rings that day.
  * `alarmSoundUri` carries the user's custom ringtone; null/absent = built-in.
+ * `soundEnabled` rings the alarm, `notificationsEnabled` posts the alert;
+ * either one off silences that half of the period-end alert.
  */
 data class SegmentSnapshot(
     val id: String,
@@ -56,6 +58,7 @@ data class TimelineSnapshot(
     val weekday: Int,
     val accentHex: String,
     val soundEnabled: Boolean,
+    val notificationsEnabled: Boolean,
     val colorNotification: Boolean,
     val alarmSoundUri: String?,
     val segments: List<SegmentSnapshot>,
@@ -91,12 +94,13 @@ object SnapshotStore {
         val segs = o.getJSONArray("segments")
         val segments = (0 until segs.length()).map { i -> segmentFromJson(segs.getJSONObject(i)) }
         return TimelineSnapshot(
-            version = o.optInt("version", 5),
+            version = o.optInt("version", 6),
             generatedAtUnixSec = o.optLong("generatedAtUnixSec", 0L),
             boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
             weekday = o.optInt("weekday", 0),
             accentHex = o.optString("accentHex", "#2563EB"),
             soundEnabled = o.optBoolean("soundEnabled", true),
+            notificationsEnabled = o.optBoolean("notificationsEnabled", true),
             colorNotification = o.optBoolean("colorNotification", false),
             alarmSoundUri = if (o.has("alarmSoundUri") && !o.isNull("alarmSoundUri"))
                 o.getString("alarmSoundUri")

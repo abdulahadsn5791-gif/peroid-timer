@@ -25,7 +25,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
   const { width, height } = useWindowDimensions();
   const isWide = width >= 768;
   const { isOpen, openSheet, closeSheet } = useSettingsOpenState();
-  const { view, flash } = useHomeViewModel(deps);
+  const { view, flash, stopAlarm } = useHomeViewModel(deps);
   const draft = useSettingsDraft(deps);
 
   /**
@@ -149,7 +149,13 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
 
       </BlurTargetView>
 
-      <FlashLayer active={flash.key > 0} periodName={flash.periodName} flashKey={flash.key} />
+      <FlashLayer
+        active={flash.key > 0 && flash.periodName !== null}
+        periodName={flash.periodName}
+        flashKey={flash.key}
+        alarmEnabled={flash.alarmEnabled}
+        onStopAlarm={stopAlarm}
+      />
 
       {/* Full-screen opaque settings — no blur, so it never interacts with
           the scene's BlurTargetView. */}

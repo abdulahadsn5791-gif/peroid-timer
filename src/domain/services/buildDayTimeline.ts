@@ -32,13 +32,16 @@ export interface DayTimelineSegment {
 }
 
 export interface DayTimeline {
-  version: 5;
+  version: 6;
   generatedAtUnixSec: number;
   boundaryUnixSec: number;
   /** 0 = Sunday … 6 = Saturday — the weekday this snapshot is for. */
   weekday: number;
   accentHex: string;
+  /** Ring the end-of-period alarm at all. */
   soundEnabled: boolean;
+  /** Post end-of-period notifications. Off = a completely silent, silent day end. */
+  notificationsEnabled: boolean;
   colorNotification: boolean;
   /** Custom alarm ringtone (file/content URI); null/absent = built-in tone. */
   alarmSoundUri: string | null;
@@ -79,12 +82,13 @@ export function buildDayTimeline(
   });
 
   return {
-    version: 5,
+    version: 6,
     generatedAtUnixSec: nowEpochSec,
     boundaryUnixSec,
     weekday: resolvedWeekday,
     accentHex: settings.accentColor,
     soundEnabled: settings.soundEnabled,
+    notificationsEnabled: settings.notificationsEnabled,
     colorNotification: settings.colorNotification,
     alarmSoundUri: settings.alarmSoundUri ?? null,
     segments,

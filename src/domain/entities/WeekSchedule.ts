@@ -18,12 +18,37 @@ export function weekdayOf(weekday: number): Weekday {
   return wrapped as Weekday;
 }
 
-/** Validates/normalizes raw persisted data into a full 7-day schedule. */
+/**
+ * Validates/normalizes raw persisted data into a full 7-day schedule.
+ *
+ * Ids are only required to be unique *within* a day — the schedule editor
+ * tracks the open card by id and the store patches by id, both scoped to the
+ * active weekday, and the alert dedupe key is "weekday:periodId". Older builds
+ * minted `draft-N` from a counter that reset on every launch, so a timetable can
+ * legitimately hold two same-id periods on one day; {@link dedupeDay} hands the
+ * later one a fresh id so editing never hits both at once.
+ */
 export function normalizeWeekSchedule(value: unknown): WeekSchedule {
   if (!Array.isArray(value) || value.length !== WEEKDAY_COUNT) {
     return defaultWeekSchedule();
   }
-  return value.map((day) => (Array.isArray(day) ? day.map(clonePeriod) : [])) as WeekSchedule;
+  return value.map((day) => (Array.isArray(day) ? dedupeDay(day.map(clonePeriod)) : [])) as WeekSchedule;
+}
+
+/** Re-ids any period that repeats an id already used earlier in the same day. */
+function dedupeDay(day: Period[]): Period[] {
+  const seen = new Set<string>();
+  return day.map((p) => {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      return p;
+    }
+    let n = 2;
+    let fresh = `${p.id}-${n}`;
+    while (seen.has(fresh)) fresh = `${p.id}-${++n}`;
+    seen.add(fresh);
+    return { ...p, id: fresh };
+  });
 }
 
 /**

@@ -21,10 +21,15 @@ export class CheckForPeriodEndUseCase implements CheckForPeriodEndPort {
     const today = periodsFor(settings.weekSchedule, weekday);
     const event = periodJustEnded(today, now.secondsOfDay, settings.lastNotifiedKey, weekday);
     if (!event) return { justEnded: false, periodName: null };
-    if (settings.soundEnabled) {
+    if (settings.soundEnabled && settings.notificationsEnabled) {
       await this.sound.playEndSound();
     }
     this.settingsRepository.save({ ...settings, lastNotifiedKey: event.notifyKey });
     return { justEnded: true, periodName: event.periodName };
+  }
+
+  /** Silences a ringing end-of-period alarm without touching the schedule. */
+  async stop(): Promise<void> {
+    await this.sound.stopEndSound();
   }
 }

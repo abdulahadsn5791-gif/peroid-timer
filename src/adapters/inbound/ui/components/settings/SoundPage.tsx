@@ -26,7 +26,7 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           <View style={styles.toggleStack}>
           <ToggleRow
             label="Period-end notifications"
-            sublabel="End-of-period and boundary alerts"
+            sublabel="Alert when a period ends"
             value={draft.notificationsEnabled}
             accent={accent}
             onChange={(v) => actions.previewNotifications(v)}
@@ -34,14 +34,14 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           />
           </View>
         </Card>
-        <Hint>Turn off to stop end-of-period and boundary alerts entirely.</Hint>
+        <Hint>Turn off to end the day completely in silence — no alert, no ringtone.</Hint>
 
         <SectionHeader title="Sound" subtitle="What plays when a period ends" />
         <Card>
           <View style={styles.toggleStack}>
           <ToggleRow
             label="Sound when a period ends"
-            sublabel="Plays even when the app is closed"
+            sublabel="Uses your alarm volume, not media"
             value={draft.soundEnabled}
             accent={accent}
             onChange={(v) => actions.previewSound(v)}
@@ -49,6 +49,10 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           />
           </View>
         </Card>
+        <Hint>
+          The alarm follows the alarm volume slider on your phone. A “Stop alarm” button appears in
+          the app whenever it rings.
+        </Hint>
 
         <SectionHeader title="Alarm ringtone" subtitle="Used by the end-of-period alarm" />
         <Card>

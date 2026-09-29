@@ -148,10 +148,13 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                 >
-                  <Text style={styles.paletteName}>{palette.name}</Text>
+                  <Text style={[styles.paletteName, { color: pal.textPrimary }]}>{palette.name}</Text>
                   <View style={styles.paletteDots}>
                     {palette.colors.map((c) => (
-                      <View key={c} style={[styles.paletteDot, { backgroundColor: c }]} />
+                      <View
+                        key={c}
+                        style={[styles.paletteDot, { backgroundColor: c, borderColor: pal.hairline }]}
+                      />
                     ))}
                   </View>
                 </PressableScale>
@@ -316,10 +319,11 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md,
     borderWidth: 1,
   },
+  // No `color` here: the name's color is always supplied by the active palette
+  // so it stays legible on both the white and the near-black settings surface.
   paletteName: {
     fontSize: tokens.text.subtext,
     fontWeight: "500",
-    color: tokens.color.text.primary,
     marginBottom: tokens.spacing.sm,
   },
   paletteDots: { flexDirection: "row", gap: 6 },
@@ -328,6 +332,5 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.1)",
   },
 });

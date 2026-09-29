@@ -233,12 +233,17 @@ export class SettingsDraftStore {
   }
 
   updatePeriod(id: string, patch: { name?: string; start?: string; end?: string; teacher?: string | null; room?: string | null }): void {
+    let changed = false;
     this.draft.weekSchedule = this.draft.weekSchedule.map((day, i) => {
       if (i !== this.draft.weekday) return day;
-      return day.map((p) => {
+      // Stop at the FIRST match. A legacy timetable can still hold two periods
+      // with the same id, and patching both would edit the wrong lecture too.
+      if (changed) return day;
+      return day.map((p, index) => {
         if (p.id !== id) return p;
+        changed = true;
         const next: Period = { id: p.id, name: p.name, start: p.start, end: p.end, teacher: p.teacher, room: p.room };
-        if (patch.name !== undefined) next.name = patch.name.trim() || `Period ${day.indexOf(p) + 1}`;
+        if (patch.name !== undefined) next.name = patch.name.trim() || `Period ${index + 1}`;
         if (patch.start !== undefined) next.start = parseTimeHHMM(patch.start);
         if (patch.end !== undefined) next.end = parseTimeHHMM(patch.end);
         if (patch.teacher !== undefined) next.teacher = patch.teacher?.trim() || null;
@@ -246,6 +251,7 @@ export class SettingsDraftStore {
         return next;
       });
     });
+    if (!changed) return;
     this.dirty = true;
     this.notify();
   }

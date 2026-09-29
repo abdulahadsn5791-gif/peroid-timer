@@ -33,16 +33,20 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
   const pal = usePal();
   const dayPeriods = draft.periods;
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // The open card is tracked by POSITION in the active day, not by id. Ids are
+  // only weekday-unique, and a legacy timetable can still carry two same-id
+  // periods on one day — selecting by id would open both rows and edit both.
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [timeField, setTimeField] = useState<"start" | "end" | null>(null);
 
   // Switching day collapses any open editor — it must not leak across days.
   useEffect(() => {
-    setExpandedId(null);
+    setExpandedIndex(null);
     setTimeField(null);
   }, [draft.weekday]);
 
-  const expanded = dayPeriods.find((p) => p.id === expandedId) ?? null;
+  // A reorder or removal moves the open card; keep it on the same lecture.
+  const expanded = expandedIndex === null ? null : (dayPeriods[expandedIndex] ?? null);
 
   return (
     <PageScroll bottomInset={bottomInset}>
@@ -73,14 +77,14 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
         <View style={styles.periodList}>
           {dayPeriods.map((period, index) => (
             <PeriodCard
-              key={period.id}
+              key={`${period.id}-${index}`}
               period={period}
               index={index}
               accent={accent}
-              expanded={expandedId === period.id}
+              expanded={expandedIndex === index}
               onToggleExpand={() => {
-                const opening = expandedId !== period.id;
-                setExpandedId(opening ? period.id : null);
+                const opening = expandedIndex !== index;
+                setExpandedIndex(opening ? index : null);
                 setTimeField(null);
               }}
               onNameChange={(name) => actions.updatePeriod(period.id, { name })}
@@ -91,8 +95,8 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
               onMoveUp={() => actions.moveUp(index)}
               onMoveDown={() => actions.moveDown(index)}
               onRemove={() => {
-                if (expandedId === period.id) {
-                  setExpandedId(null);
+                if (expandedIndex === index) {
+                  setExpandedIndex(null);
                   setTimeField(null);
                 }
                 actions.remove(index);
@@ -129,7 +133,7 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
         <DashedAddButton
           label="+ Add period"
           onPress={() => {
-            setExpandedId(null);
+            setExpandedIndex(null);
             setTimeField(null);
             actions.addPeriod();
           }}

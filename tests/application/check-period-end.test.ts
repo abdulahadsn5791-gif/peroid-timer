@@ -10,11 +10,11 @@ function at(h: number, m: number, s = 0): Date {
   return new Date(2026, 8, 20, h, m, s, 0); // Sunday, Sep 20 2026 → weekday 0
 }
 
-function setup(nowMs: number, soundEnabled = true) {
+function setup(nowMs: number, soundEnabled = true, notificationsEnabled = true) {
   const clock = new FakeClock(nowMs);
   const period = createPeriod("p1", "Math", "08:00", "08:30");
   const repo = new InMemorySettingsRepository(
-    settingsWith({ periods: [period], soundEnabled }),
+    settingsWith({ periods: [period], soundEnabled, notificationsEnabled }),
   );
   const sound = new FakeSound();
   const uc = new CheckForPeriodEndUseCase(clock, repo, sound);
@@ -52,5 +52,20 @@ describe("CheckForPeriodEndUseCase", () => {
     const { uc } = setup(at(8, 10, 0).getTime());
     const result = await uc.tick();
     expect(result.justEnded).toBe(false);
+  });
+
+  test("stays silent when notifications are disabled", async () => {
+    const { uc, sound } = setup(at(8, 30, 0).getTime(), true, false);
+    const result = await uc.tick();
+    expect(result.justEnded).toBe(true);
+    expect(sound.playCount).toBe(0);
+  });
+
+  test("stop() silences a ringing alarm", async () => {
+    const { uc, sound } = setup(at(8, 30, 0).getTime());
+    await uc.tick();
+    expect(sound.playCount).toBe(1);
+    await uc.stop();
+    expect(sound.stopCount).toBe(1);
   });
 });

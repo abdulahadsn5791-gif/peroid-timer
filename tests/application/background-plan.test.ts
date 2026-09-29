@@ -23,7 +23,7 @@ describe("Background plan", () => {
     const planner = new BackgroundPlanner(clock, snapshot, alerts);
     await planner.apply(repo.load());
 
-    expect(snapshot.last?.version).toBe(5);
+    expect(snapshot.last?.version).toBe(6);
     expect(snapshot.last?.weekday).toBe(clock.todayParts().weekday);
     expect(snapshot.last?.boundaryUnixSec).toBe(clock.todayBoundaryEpochSec());
     expect(alerts.scheduled).toHaveLength(1);

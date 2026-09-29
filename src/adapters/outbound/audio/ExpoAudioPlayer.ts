@@ -1,4 +1,5 @@
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { NativeModules } from "react-native";
 import type { SoundPort } from "@application/ports/outbound/SoundPort";
 
 const BUILTIN_TONE = require("../../../../assets/period-end.wav");
@@ -54,6 +55,24 @@ export class ExpoAudioPlayer implements SoundPort {
       } catch {
         // give up silently
       }
+    }
+  }
+
+  async stopEndSound(): Promise<void> {
+    for (const player of [this.customPlayer, this.builtinPlayer]) {
+      if (!player) continue;
+      try {
+        player.pause();
+        player.seekTo(0);
+      } catch {
+        // player already released
+      }
+    }
+    // The loud background alarm lives natively; ask it to stop as well.
+    try {
+      NativeModules.PeriodTimerScheduler?.stopAlarm();
+    } catch {
+      // native module unavailable (iOS / not prebuilt) — nothing else to stop
     }
   }
 }

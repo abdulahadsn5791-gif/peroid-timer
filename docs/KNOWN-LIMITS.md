@@ -31,6 +31,23 @@ Honest scope so nobody discovers these the hard way.
   with `USAGE_ALARM` audio), so it rings **even when the app is closed** and
   on the lock screen. If the picked file is ever deleted by the system, the
   platform default alarm sound plays instead — the alarm never goes silent.
+- The ringtone follows the phone's **alarm volume** slider, not media volume.
+  The channel is republished with `USAGE_ALARM` attributes before each alert
+  because Android 8+ ignores a notification builder's `setSound` once the
+  channel exists — the channel's own sound is what actually plays.
+- **Stopping it** takes two routes: a "Stop alarm" action on the notification
+  and a matching button in the app's end-of-period toast. Cancelling the
+  notification is what silences the channel sound. Stopping one alarm never
+  disables the schedule; the next period end still fires.
+
+## The two alert toggles are independent
+- **Period-end notifications** off: nothing is posted at a period end, and any
+  still-ringing alarm is silenced.
+- **Sound when a period ends** off: a quiet heads-up still appears, with no
+  ringtone and no vibration.
+- Both off: a period end is completely silent. `notificationsEnabled` travels
+  to the native receiver in the day snapshot (v6); before that it was saved
+  and displayed but never reached the alarm path.
 
 ## Play Protect / "harmful app" flag
 The flag was caused by a legacy permission combination, not by any behaviour:

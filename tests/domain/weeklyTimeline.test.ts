@@ -17,7 +17,7 @@ describe("buildDayTimeline (weekly, v5)", () => {
   test("resolves the requested weekday's preset into segments", () => {
     const settings = settingsWith({ weekSchedule: mondayOnly() });
     const monday = buildDayTimeline(settings, BOUNDARY, NOW, 1);
-    expect(monday.version).toBe(5);
+    expect(monday.version).toBe(6);
     expect(monday.weekday).toBe(1);
     expect(monday.segments).toHaveLength(4);
     expect(monday.segments[0].startUnixSec).toBe(BOUNDARY + (8 * 60 + 30) * 60);

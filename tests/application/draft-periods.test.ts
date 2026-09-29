@@ -53,6 +53,31 @@ describe("DraftPeriodsUseCase (weekly draft)", () => {
     expect(monday[4].name).toBe("Period 5");
   });
 
+  test("addDefault mints ids that are unique across the whole week", () => {
+    const { uc, draft } = setup();
+    uc.addDefault();
+    const mondayIds = draft.getDraft().weekSchedule[1].map((p) => p.id);
+    // No id repeats inside a day, otherwise the editor opens and patches two
+    // cards at once.
+    expect(new Set(mondayIds).size).toBe(mondayIds.length);
+  });
+
+  test("a fresh use case never re-issues an id already persisted in the draft", () => {
+    const { uc, draft } = setup();
+    uc.addDefault();
+    const firstId = draft.getDraft().weekSchedule[1][4].id;
+
+    // Simulates an app restart: the counter is back at its initial value but
+    // the period minted last session is still in the timetable.
+    const restarted = new DraftPeriodsUseCase(draft, new InMemoryWallpaperStore());
+    restarted.addDefault();
+
+    const mondayIds = draft.getDraft().weekSchedule[1].map((p) => p.id);
+    expect(mondayIds).toContain(firstId);
+    expect(mondayIds.filter((id) => id === firstId)).toHaveLength(1);
+    expect(new Set(mondayIds).size).toBe(mondayIds.length);
+  });
+
   test("an empty weekday allows addDefault to start at the default time", () => {
     const { uc, draft } = setup();
     draft.setWeekday(0); // Sunday

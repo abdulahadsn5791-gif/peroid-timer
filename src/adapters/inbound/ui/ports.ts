@@ -24,6 +24,8 @@ export interface AppDeps {
   subscribeDraft(listener: () => void): () => void;
   settingsActions: SettingsActions;
   checkPeriodEnd(): Promise<PeriodEndTickResult>;
+  /** Silences a currently-ringing end-of-period alarm. */
+  stopAlarm(): Promise<void>;
   onBackgroundTick(): void;
   runBootstrap(): Promise<void>;
 }

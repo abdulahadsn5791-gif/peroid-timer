@@ -6,17 +6,18 @@ import { paletteAt } from "@domain/value-objects/RingPalette";
 const BOUNDARY = 1_800_000_000; // arbitrary local midnight epoch sec
 const NOW = BOUNDARY + 8 * 3600 + 45 * 60; // 08:45
 
-describe("buildDayTimeline (snapshot v5)", () => {
+describe("buildDayTimeline (snapshot v6)", () => {
   test("maps periods to absolute epoch segments with thresholds + duration as data", () => {
     const settings = settingsWith({});
     const tl: DayTimeline = buildDayTimeline(settings, BOUNDARY, NOW, 3);
 
-    expect(tl.version).toBe(5);
+    expect(tl.version).toBe(6);
     expect(tl.weekday).toBe(3);
     expect(tl.boundaryUnixSec).toBe(BOUNDARY);
     expect(tl.generatedAtUnixSec).toBe(NOW);
     expect(tl.accentHex).toBe(settings.accentColor);
     expect(tl.soundEnabled).toBe(true);
+    expect(tl.notificationsEnabled).toBe(true);
     expect(tl.colorNotification).toBe(false);
     expect(tl.alarmSoundUri).toBeNull();
     expect(tl.segments).toHaveLength(4);
@@ -29,6 +30,28 @@ describe("buildDayTimeline (snapshot v5)", () => {
     expect(first.colors).toEqual(paletteAt(0).colors);
     expect(first.phaseOneUntilRemaining).toBe(0.3);
     expect(first.phaseTwoUntilRemaining).toBe(0.15);
+  });
+
+  test("carries both alert toggles so the native alarm can honour each one", () => {
+    // The Kotlin receiver reads these two independently: soundEnabled gates the
+    // ringtone, notificationsEnabled gates the alert itself.
+    const both = buildDayTimeline(
+      settingsWith({ soundEnabled: false, notificationsEnabled: true }),
+      BOUNDARY,
+      NOW,
+      3,
+    );
+    expect(both.soundEnabled).toBe(false);
+    expect(both.notificationsEnabled).toBe(true);
+
+    const neither = buildDayTimeline(
+      settingsWith({ soundEnabled: false, notificationsEnabled: false }),
+      BOUNDARY,
+      NOW,
+      3,
+    );
+    expect(neither.soundEnabled).toBe(false);
+    expect(neither.notificationsEnabled).toBe(false);
   });
 
   test("serializes to plain JSON the native side can parse", () => {

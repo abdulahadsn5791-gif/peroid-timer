@@ -77,7 +77,7 @@ describe("Settings flow (weekly)", () => {
     expect(repo.load().paletteIndex).toBe(2);
     expect(repo.load().weekSchedule).toHaveLength(7);
     expect(draft.isOpen()).toBe(false);
-    expect(snapshot.last?.version).toBe(5);
+    expect(snapshot.last?.version).toBe(6);
     expect(alerts.scheduled).toHaveLength(1);
     expect(alerts.startLiveCalls).toBe(1);
     expect(snapshot.last?.segments).toHaveLength(4);

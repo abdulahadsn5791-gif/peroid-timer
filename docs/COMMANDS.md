@@ -6,7 +6,7 @@ runtime (v22, `~/.local/nodejs`) is on `PATH`; `bunx` bridges them.
 ## Everyday
 ```sh
 bun install                 # install deps (bun.lock is committed)
-bun test                    # domain + application + architecture tests (~65 tests)
+bun test                    # domain + application + architecture tests (~95 tests)
 bun typecheck               # tsc --noEmit over the whole project
 bun beep                    # (re)generate assets/period-end.wav from scripts/make-beep.ts
 ```

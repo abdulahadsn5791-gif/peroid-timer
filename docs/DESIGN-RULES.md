@@ -67,14 +67,21 @@ tests/                            (Bun tests + fakes + architecture test)
 scripts/                          (Bun-only dev scripts)
 ```
 
-### 2.4 Weekly schedule (v5 snapshot)
+### 2.4 Weekly schedule (v6 snapshot)
 - `Settings.weekSchedule` holds one `Period[]` per weekday (0 = Sunday … 6 =
   Saturday, matching `Date.getDay()`). An empty list is the "no lectures"
   preset: the day timeline snapshot gets zero segments and native stays off —
   no live notification, no alarms, no sound.
-- The native snapshot (`DayTimeline` v5) always describes ONE resolved day and
-  carries `weekday` + `alarmSoundUri`. End-of-period dedupe keys are
+- The native snapshot (`DayTimeline` v6) always describes ONE resolved day and
+  carries `weekday`, `alarmSoundUri`, and the two alert toggles
+  `soundEnabled` / `notificationsEnabled` — native decides nothing, it only
+  honours what the snapshot says. End-of-period dedupe keys are
   `"weekday:periodId"` so the same period rings again on other days.
+- **Period ids only need to be unique within one day.** The schedule editor
+  tracks the open card by position and `updatePeriod` patches the first match on
+  the active weekday, both scoped to a day. `normalizeWeekSchedule` re-ids a
+  day that repeats an id, so a timetable written by an older build (whose
+  `draft-N` counter reset every launch) can never open two editors at once.
 
 ### 2.2 Rules
 1. `domain/` and `application/` must not import `react`, `react-native`, `expo-*`, `@react-native-*`, any `adapters/` path, or any Bun/Node API.
@@ -91,7 +98,7 @@ scripts/                          (Bun-only dev scripts)
 | `SettingsRepositoryPort` | `load(): Settings` · `save(s: Settings): void` |
 | `ImagePickerPort` | `pickImage(): Promise<{ uri: string; width: number; height: number } \| null>` |
 | `WallpaperStorePort` | `getStoredUri(): string \| null` · `setPreviewImage(src): Promise<string \| null>` · `clearPreview(): void` · `commitPreview(): Promise<string \| null>` · `rollbackPreview(): void` · `removeStored(): Promise<void>` |
-| `SoundPort` | `playEndSound(): Promise<void>` |
+| `SoundPort` | `playEndSound(): Promise<void>` · `stopEndSound(): Promise<void>` |
 | `AlertSchedulerPort` | `scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>` · `scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void>` · `startLiveNotification(): Promise<void>` · `stopLiveNotification(): Promise<void>` · `hasExactAlarmAccess(): Promise<boolean>` · `requestExactAlarmAccess(): Promise<boolean>` |
 | `SoundPickerPort` | `pickSound(): Promise<{ uri: string; name: string } \| null>` |
 | `LockScreenSnapshotPort` | `write(timeline: DayTimeline): Promise<void>` · `read(): DayTimeline \| null` |

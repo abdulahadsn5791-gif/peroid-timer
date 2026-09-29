@@ -42,9 +42,19 @@ class PeriodTimerSchedulerModule(
     fun scheduleEndOfPeriodAlerts(timelineJson: String?): Boolean {
         val snapshot = timelineJson?.let { parseTimeline(it) } ?: return false
         AlarmSchedulerCore.scheduleEndAlerts(reactApplicationContext, snapshot)
-        if (snapshot.alarmSoundUri != null) {
-            EndAlertNotifier.updateChannelSound(reactApplicationContext, snapshot.alarmSoundUri)
-        }
+        return true
+    }
+
+    /**
+     * Silences a currently-ringing period-end alarm and takes its notification
+     * down. Backs the in-app "Stop alarm" control, so the user is never stuck
+     * with a tone they can only end from the notification shade.
+     */
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun stopAlarm(): Boolean {
+        val app = reactApplicationContext
+        // Cancelling the alarm-channel notification stops its channel sound.
+        EndAlertNotifier.cancelAllAlarms(app)
         return true
     }
 

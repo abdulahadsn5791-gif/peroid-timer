@@ -190,7 +190,9 @@ jobs:
             lectures — timer, alarms and notifications stay off
           - Teacher and room stored per period, shown on the timer, the
             schedule list and the widget
-          - Custom alarm ringtone that rings even when the app is closed
+          - Custom alarm ringtone that rings even when the app is closed, on
+            your phone's alarm volume rather than media volume
+          - Stop the alarm from the notification or from the app
           - Live progress notification with countdown and bar
           - Download \`period-timer.apk\` (all ABIs: arm64-v8a, armeabi-v7a, x86, x86_64)
           - Verify with \`SHA256SUMS\`

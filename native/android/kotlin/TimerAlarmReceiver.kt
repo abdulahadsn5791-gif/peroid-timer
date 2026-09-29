@@ -14,8 +14,16 @@ import android.content.Intent
 class TimerAlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val snapshot = SnapshotStore.load(context) ?: return
         val action = intent.action ?: AlarmSchedulerCore.ACTION_ALARM
+
+        // "Stop alarm" must work even if the snapshot has since been rewritten
+        // or removed, so it is handled before the snapshot is read.
+        if (action == EndAlertNotifier.ACTION_STOP) {
+            onStopAlarm(context, intent)
+            return
+        }
+
+        val snapshot = SnapshotStore.load(context) ?: return
         val now = System.currentTimeMillis() / 1000L
 
         when (action) {
@@ -25,13 +33,28 @@ class TimerAlarmReceiver : BroadcastReceiver() {
     }
 
     /**
+     * The alarm notification's "Stop alarm" action: silence the ringtone and
+     * take the notification down. Deduped periods re-arm their alarm for the
+     * next day, so stopping here never disables future alerts.
+     */
+    private fun onStopAlarm(context: Context, intent: Intent) {
+        val id = intent.getIntExtra(EndAlertNotifier.EXTRA_NOTIFICATION_ID, 0)
+        // Cancelling the notification stops its channel sound, so that alone is
+        // enough; clear any other stray alarm too.
+        if (id != 0) EndAlertNotifier.cancel(context, id)
+        EndAlertNotifier.cancelAllAlarms(context)
+    }
+
+    /**
      * The loud end-of-period alert. Deduped per weekday+period so a repeated
      * delivery (inexact alarm retry) cannot ring twice; weekly presets rotate
      * the weekday inside the key, so the same period rings again tomorrow.
      */
     private fun onEndAlert(context: Context, snapshot: TimelineSnapshot, intent: Intent, now: Long) {
         if (snapshot.segments.isEmpty()) return // empty preset day: never ring
-        if (!snapshot.soundEnabled) return
+        // Both toggles are honoured independently: the notification toggle stops
+        // the alert entirely, the sound toggle stops just the ringtone.
+        if (!snapshot.soundEnabled && !snapshot.notificationsEnabled) return
 
         val segId = intent.getStringExtra(AlarmSchedulerCore.EXTRA_SEGMENT_ID) ?: return
         val ended = snapshot.segments.firstOrNull { it.id == segId } ?: return
@@ -40,8 +63,13 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         if (SnapshotStore.lastNotifiedKey(context) == key) return
         SnapshotStore.setLastNotifiedKey(context, key)
 
+        if (!snapshot.notificationsEnabled) {
+            // Silent day end: nothing posts, and any still-ringing alarm stops.
+            EndAlertNotifier.cancelAllAlarms(context)
+            return
+        }
+
         val lookup = SnapshotStore.lookup(snapshot, now)
-        EndAlertNotifier.updateChannelSound(context, snapshot.alarmSoundUri)
         EndAlertNotifier.post(context, snapshot, ended, lookup.next, now)
         TimerWidgetProvider.requestUpdate(context)
     }

@@ -76,6 +76,38 @@ describe("WeekSchedule", () => {
     expect(fixed[1]).toHaveLength(0);
   });
 
+  test("normalizeWeekSchedule re-ids a day that repeats an id", () => {
+    // Older builds minted draft ids from a counter that reset on every launch,
+    // so a persisted day can hold the same id twice.
+    const day = [
+      createPeriod("draft-1", "First", "08:00", "08:40"),
+      createPeriod("draft-1", "Second", "08:45", "09:25"),
+      createPeriod("draft-1", "Third", "09:30", "10:10"),
+    ];
+    const fixed = normalizeWeekSchedule([day, [], [], [], [], [], []]);
+    const ids = fixed[0].map((p) => p.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids[0]).toBe("draft-1");
+    // Content is untouched — only the colliding ids change.
+    expect(fixed[0].map((p) => p.name)).toEqual(["First", "Second", "Third"]);
+  });
+
+  test("normalizeWeekSchedule keeps ids shared across different days", () => {
+    // Ids only need to be unique within a day; "weekday:periodId" namespaces
+    // them for the alert dedupe.
+    const week = normalizeWeekSchedule([
+      [createPeriod("p1", "A", "08:00", "09:00")],
+      [createPeriod("p1", "A", "08:00", "09:00")],
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+    expect(week[0][0].id).toBe("p1");
+    expect(week[1][0].id).toBe("p1");
+  });
+
   test("cloneWeekSchedule deep-clones periods", () => {
     const week = defaultWeekSchedule();
     const copy = cloneWeekSchedule(week);
