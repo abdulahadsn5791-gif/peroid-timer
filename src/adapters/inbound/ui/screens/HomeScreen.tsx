@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions, type View as RNView } from "react-native";
+import { Image, StyleSheet, Text, View, useWindowDimensions, type View as RNView } from "react-native";
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -8,8 +8,6 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
-  FadeIn,
-  FadeOut,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -18,7 +16,7 @@ import { tokens } from "../design-system/tokens";
 import { Header } from "../components/Header";
 import { Ring, ringSizeFor } from "../components/Ring";
 import { ScheduleList } from "../components/ScheduleList";
-import { SettingsSheet } from "../components/SettingsSheet";
+import { SettingsFlow } from "../components/settings/SettingsFlow";
 import { FlashLayer } from "../components/FlashLayer";
 import { useHomeViewModel, useSettingsDraft, useSettingsOpenState } from "../hooks/useViewModel";
 import type { AppDeps } from "../ports";
@@ -59,10 +57,6 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
     openSheet();
   };
   const dismiss = () => closeSheet();
-  const dismissReverting = () => {
-    deps.settingsActions.close();
-    closeSheet();
-  };
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: view.hasWallpaper ? "#000" : tokens.color.canvas }]}>
@@ -124,19 +118,12 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           ) : null}
         </Animated.ScrollView>
 
-        {sheetOpen ? (
-          <Animated.View style={StyleSheet.absoluteFill} pointerEvents="box-none" entering={FadeIn.duration(160)} exiting={FadeOut.duration(200)}>
-            <View style={[StyleSheet.absoluteFill, styles.sheetScrim]} pointerEvents="none" />
-            <Pressable style={StyleSheet.absoluteFill} onPress={dismissReverting} accessibilityLabel="Close settings" />
-          </Animated.View>
+        {sheetOpen && draft ? (
+          <SettingsFlow draft={draft} deps={deps} onDismiss={dismiss} sceneBlur={sceneBlur} isWide={isWide} />
         ) : null}
       </BlurTargetView>
 
       <FlashLayer active={flash.key > 0} periodName={flash.periodName} flashKey={flash.key} />
-
-      {sheetOpen ? (
-        <SettingsSheet visible={isOpen} draft={draft} isWide={isWide} actions={deps.settingsActions} onDismiss={dismiss} sceneBlur={sceneBlur} />
-      ) : null}
     </SafeAreaView>
   );
 }
@@ -287,7 +274,6 @@ const styles = StyleSheet.create({
   loadLed: { width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(0,0,0,0.10)" },
   loadCardBody: { flex: 1, gap: 6 },
   wallpaper: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-  sheetScrim: { backgroundColor: "rgba(0,0,0,0.32)" },
   scrollContent: { paddingBottom: tokens.spacing.xxl },
   narrowPane: {
     alignItems: "center",
