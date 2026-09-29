@@ -113,3 +113,9 @@ the `EXPECTED` constant in `release.yml` in the same commit.
 
 So native code changes live in `native/android/` and are never edited in the
 generated `android/` folder.
+
+## Git commit hygiene
+
+Commit messages contain the change description only. No agent/tool/AI
+attribution of any kind: no "Generated with …" trailers, no `Co-Authored-By`
+agent lines. See the rule in `AGENTS.md`.
