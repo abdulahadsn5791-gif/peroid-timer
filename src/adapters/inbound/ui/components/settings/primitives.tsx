@@ -463,15 +463,21 @@ export function PeriodCard({
   const pal = usePal();
   return (
     <Card style={styles.periodCard}>
-      <PressableScale
-        onPress={onToggleExpand}
-        haptic="selection"
-        accessibilityRole="button"
-        accessibilityLabel={`Edit ${period.name}`}
-        accessibilityState={{ expanded }}
-        style={styles.periodHeadBtn}
-      >
-        <PeriodSummaryChip period={period} index={index} accent={accent} />
+      {/* The reorder/remove buttons are SIBLINGS of the tap-to-expand button, not
+          children of it. Nested pressables share one touch area, so a tap meant
+          to open a period could land on the arrows and silently move it up or
+          down the timetable. */}
+      <View style={styles.periodHead}>
+        <PressableScale
+          onPress={onToggleExpand}
+          haptic="selection"
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${period.name}`}
+          accessibilityState={{ expanded }}
+          style={styles.periodHeadBtn}
+        >
+          <PeriodSummaryChip period={period} index={index} accent={accent} />
+        </PressableScale>
         <View style={styles.periodHeadActions}>
           <PressableScale onPress={onMoveUp} haptic="selection" style={styles.iconBtn} accessibilityLabel="Move up">
             <ArrowSvg up />
@@ -485,7 +491,7 @@ export function PeriodCard({
             </Svg>
           </PressableScale>
         </View>
-      </PressableScale>
+      </View>
       {expanded ? (
         <View style={styles.periodEditor}>
           <TextInput
@@ -782,10 +788,16 @@ const styles = StyleSheet.create({
   },
   // Period card
   periodCard: { padding: 0 },
-  periodHeadBtn: {
+  periodHead: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingRight: tokens.spacing.md,
+    paddingVertical: tokens.spacing.xs,
+  },
+  periodHeadBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: tokens.tap + 8,
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.xs,
