@@ -30,6 +30,7 @@ import {
   PreviewNotificationsUseCase,
   PreviewPaletteUseCase,
   PreviewSoundUseCase,
+  PreviewThemeUseCase,
   PreviewWallpaperBlurUseCase,
 } from "@application/use-cases/PreviewUseCases";
 import { DraftPeriodsUseCase } from "@application/use-cases/DraftPeriodsUseCase";
@@ -153,6 +154,7 @@ export function createApp(): AppDeps {
   const previewSound = new PreviewSoundUseCase(draftStore, wallpaperStore);
   const previewWallpaperBlur = new PreviewWallpaperBlurUseCase(draftStore, wallpaperStore);
   const previewNotifications = new PreviewNotificationsUseCase(draftStore, wallpaperStore);
+  const previewTheme = new PreviewThemeUseCase(draftStore, wallpaperStore);
   const periods = new DraftPeriodsUseCase(draftStore, wallpaperStore);
   const setWeekday = new SetWeekdayUseCase(draftStore, wallpaperStore);
   const clearDay = new ClearDayUseCase(draftStore, wallpaperStore);
@@ -182,6 +184,7 @@ export function createApp(): AppDeps {
     previewSound: (b) => void previewSound.preview(b),
     previewWallpaperBlur: (blur) => void previewWallpaperBlur.preview(blur),
     previewNotifications: (b) => void previewNotifications.preview(b),
+    previewTheme: (t) => void previewTheme.preview(t),
     updatePeriod: (id, patch) => void periods.updatePeriod(id, patch),
     moveUp: (i) => void periods.moveUp(i),
     moveDown: (i) => void periods.moveDown(i),

@@ -47,6 +47,7 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
       alarmSoundUri: draft.alarmSoundUri,
       wallpaperBlur: draft.wallpaperBlur,
       wallpaperUri: storedUri,
+      theme: draft.theme,
       lastNotifiedKey: this.settingsRepository.load().lastNotifiedKey,
     });
 

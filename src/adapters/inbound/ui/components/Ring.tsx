@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
 import Animated, { Easing, useAnimatedProps, useSharedValue, withTiming } from "react-native-reanimated";
-import { tokens, adaptiveColors } from "../design-system/tokens";
+import { tokens, adaptiveColors, type ThemeName } from "../design-system/tokens";
 import { hexToRgba } from "../utils/color";
 import type { RingViewModel } from "@application/ports/view-models/ViewModels";
 
@@ -19,6 +19,8 @@ interface Props {
   hasWallpaper: boolean;
   /** Color the tick bars that span the elapsed portion (dynamic bars). */
   colorActiveBars: boolean;
+  /** Base look without a wallpaper; a wallpaper always renders glassy. */
+  theme?: ThemeName;
   style?: ViewStyle;
 }
 
@@ -28,8 +30,8 @@ interface Props {
  * rides the arc end, and a centered stack of period-name chip, live clock and
  * status line. Flat fills only — all depth comes from layering and tint.
  */
-export function Ring({ vm, size, hasWallpaper, colorActiveBars, style }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper);
+export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light", style }: Props) {
+  const adaptive = adaptiveColors(hasWallpaper, theme);
   const chipFont = size * 0.05;
   const timeSize = vm.showHours ? size * 0.15 : size * 0.21;
   const statusSize = size * 0.046;

@@ -38,6 +38,7 @@ export function draftVmFromStore(
     wallpaperBlur: draft.wallpaperBlur,
     wallpaperPreviewUri: draft.wallpaperUri,
     hasWallpaper: draft.wallpaperUri != null,
+    theme: draft.theme,
     weekday: draft.weekday,
     weekPeriods,
     periods: weekPeriods[draft.weekday] ?? [],

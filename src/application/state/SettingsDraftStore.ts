@@ -1,4 +1,4 @@
-import { clampBlur, normalizeSettings, type Settings } from "@domain/entities/Settings";
+import { clampBlur, normalizeSettings, type AppTheme, type Settings } from "@domain/entities/Settings";
 import { clonePeriod, createPeriod, type Period } from "@domain/entities/Period";
 import {
   cloneWeekSchedule,
@@ -29,6 +29,8 @@ export interface DraftSnapshot {
   colorActiveBars: boolean;
   wallpaperBlur: number;
   wallpaperUri: string | null;
+  /** Base look for the no-wallpaper home screen (wallpaper mode stays glassy). */
+  theme: AppTheme;
   alarmSoundUri: string | null;
   /** 0 = Sunday … 6 = Saturday — the weekday tab being edited. */
   weekday: Weekday;
@@ -67,6 +69,7 @@ export class SettingsDraftStore {
       colorActiveBars: s.colorActiveBars,
       wallpaperBlur: s.wallpaperBlur,
       wallpaperUri: s.wallpaperUri,
+      theme: s.theme,
       alarmSoundUri: s.alarmSoundUri,
       weekday: 1,
       weekSchedule: cloneWeekSchedule(s.weekSchedule),
@@ -135,6 +138,7 @@ export class SettingsDraftStore {
     colorActiveBars: boolean;
     wallpaperBlur: number;
     wallpaperUri: string | null;
+    theme: AppTheme;
     weekSchedule: WeekSchedule;
   } | null {
     if (!this.opened) return null;
@@ -145,6 +149,7 @@ export class SettingsDraftStore {
       colorActiveBars: this.draft.colorActiveBars,
       wallpaperBlur: this.draft.wallpaperBlur,
       wallpaperUri: this.draft.wallpaperUri,
+      theme: this.draft.theme,
       weekSchedule: this.draft.weekSchedule,
     };
   }
@@ -207,6 +212,12 @@ export class SettingsDraftStore {
 
   setWallpaperUri(uri: string | null): void {
     this.draft.wallpaperUri = uri;
+    this.dirty = true;
+    this.notify();
+  }
+
+  setTheme(theme: AppTheme): void {
+    this.draft.theme = theme;
     this.dirty = true;
     this.notify();
   }

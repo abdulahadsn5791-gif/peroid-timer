@@ -32,10 +32,6 @@ export interface PreviewNotificationsPort {
   preview(enabled: boolean): SettingsDraftVM;
 }
 
-export interface PreviewWallpaperBlurPort {
-  preview(blur: number): SettingsDraftVM;
-}
-
-export interface PreviewNotificationsPort {
-  preview(enabled: boolean): SettingsDraftVM;
+export interface PreviewThemePort {
+  preview(theme: "light" | "dark"): SettingsDraftVM;
 }

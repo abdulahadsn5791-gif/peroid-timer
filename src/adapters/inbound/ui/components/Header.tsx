@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, type View as RNView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import Svg, { Path, Circle as SCircle, Line } from "react-native-svg";
-import { tokens, adaptiveColors, panelMaterial, shadow } from "../design-system/tokens";
+import { tokens, adaptiveColors, panelMaterial, shadow, type ThemeName } from "../design-system/tokens";
 import { PressableScale } from "./PressableScale";
 
 interface Props {
@@ -13,12 +13,14 @@ interface Props {
   wallpaperBlur: number;
   /** Ref to the wallpaper `BlurTargetView` so the gear button gets a real Android blur. */
   blurTarget?: React.RefObject<RNView | null> | null;
+  /** Base look without a wallpaper; a wallpaper always renders glassy. */
+  theme?: ThemeName;
   onOpenSettings: () => void;
 }
 
-export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blurTarget, onOpenSettings }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper);
-  const material = panelMaterial(hasWallpaper);
+export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blurTarget, theme = "light", onOpenSettings }: Props) {
+  const adaptive = adaptiveColors(hasWallpaper, theme);
+  const material = panelMaterial(hasWallpaper, theme);
   const useBlur = hasWallpaper && !!blurTarget;
   const insets = useSafeAreaInsets();
   return (
@@ -29,8 +31,8 @@ export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blu
           style={[
             styles.dateChip,
             {
-              backgroundColor: hasWallpaper ? "rgba(255,255,255,0.14)" : tokens.color.surface2,
-              borderColor: hasWallpaper ? "rgba(255,255,255,0.28)" : tokens.color.hairlineStrong,
+              backgroundColor: hasWallpaper ? "rgba(255,255,255,0.14)" : material.background,
+              borderColor: hasWallpaper ? "rgba(255,255,255,0.28)" : material.borderColor,
             },
           ]}
         >

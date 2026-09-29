@@ -39,6 +39,8 @@ export interface SettingsActions {
   previewColorNotification(enabled: boolean): void;
   previewColorActiveBars(enabled: boolean): void;
   previewSound(enabled: boolean): void;
+  /** Switches the no-wallpaper home look between light and dark. */
+  previewTheme(theme: "light" | "dark"): void;
   previewWallpaperBlur(blur: number): void;
   previewNotifications(enabled: boolean): void;
   updatePeriod(id: string, patch: PeriodPatch): void;

@@ -156,6 +156,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       isEmptyDay: today.length === 0,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
+      theme: settings.theme,
       colorActiveBars: settings.colorActiveBars,
       wallpaperUri: storedWallpaper,
       accentHex: settings.accentColor,

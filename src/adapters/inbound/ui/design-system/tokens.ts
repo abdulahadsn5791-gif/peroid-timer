@@ -2,6 +2,7 @@
  * Design tokens — light / white "native OS surface" look. Flat fills only,
  * no gradients. One accent color. Radius scale nests one step smaller.
  */
+export type ThemeName = "light" | "dark";
 export const tokens = {
   color: {
     canvas: "#F3F4F6",
@@ -72,16 +73,51 @@ export function shadow(level: 0 | 1 | 2 | 3): Shadow {
   return table[level] ?? table[1];
 }
 
-/** Text color used by the big frosted hero when NO wallpaper is set. */
-export const adaptiveColors = (hasWallpaper: boolean) => ({
-  primary: hasWallpaper ? "rgba(255,255,255,0.97)" : tokens.color.text.primary,
-  secondary: hasWallpaper ? "rgba(255,255,255,0.80)" : tokens.color.text.secondary,
-  ringTrack: hasWallpaper ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.08)",
-  ringTick: hasWallpaper ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.16)",
-  ringTickStrong: hasWallpaper ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.26)",
+/** Text colors used by the big frosted hero when a wallpaper IS set. */
+const wallpaperColors = () => ({
+  primary: "rgba(255,255,255,0.97)",
+  secondary: "rgba(255,255,255,0.80)",
+  ringTrack: "rgba(255,255,255,0.28)",
+  ringTick: "rgba(255,255,255,0.40)",
+  ringTickStrong: "rgba(255,255,255,0.65)",
 });
 
-export const panelMaterial = (hasWallpaper: boolean) => ({
-  background: hasWallpaper ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.65)",
-  borderColor: hasWallpaper ? "rgba(255,255,255,0.22)" : tokens.color.hairline,
-});
+/** Text color used by the big frosted hero when NO wallpaper is set. */
+export const adaptiveColors = (hasWallpaper: boolean, theme: ThemeName = "light") => {
+  if (hasWallpaper) return wallpaperColors();
+  if (theme === "dark") {
+    return {
+      primary: "rgba(255,255,255,0.95)",
+      secondary: "rgba(255,255,255,0.62)",
+      ringTrack: "rgba(255,255,255,0.10)",
+      ringTick: "rgba(255,255,255,0.18)",
+      ringTickStrong: "rgba(255,255,255,0.34)",
+    };
+  }
+  return {
+    primary: tokens.color.text.primary,
+    secondary: tokens.color.text.secondary,
+    ringTrack: "rgba(0,0,0,0.08)",
+    ringTick: "rgba(0,0,0,0.16)",
+    ringTickStrong: "rgba(0,0,0,0.26)",
+  };
+};
+
+export const panelMaterial = (hasWallpaper: boolean, theme: ThemeName = "light") => {
+  if (hasWallpaper) {
+    return {
+      background: "rgba(255,255,255,0.14)",
+      borderColor: "rgba(255,255,255,0.22)",
+    };
+  }
+  if (theme === "dark") {
+    return {
+      background: "rgba(255,255,255,0.06)",
+      borderColor: "rgba(255,255,255,0.12)",
+    };
+  }
+  return {
+    background: "rgba(255,255,255,0.65)",
+    borderColor: tokens.color.hairline,
+  };
+};

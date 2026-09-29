@@ -7,6 +7,7 @@ import type {
   PreviewNotificationsPort,
   PreviewPalettePort,
   PreviewSoundPort,
+  PreviewThemePort,
   PreviewWallpaperBlurPort,
 } from "@application/ports/inbound/PreviewPorts";
 import type { WallpaperStorePort } from "@application/ports/outbound/WallpaperStorePort";
@@ -90,6 +91,14 @@ export class PreviewAlarmSoundUseCase {
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
   preview(uri: string | null): SettingsDraftVM {
     this.draftStore.setAlarmSound(uri);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+export class PreviewThemeUseCase implements PreviewThemePort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(theme: "light" | "dark"): SettingsDraftVM {
+    this.draftStore.setTheme(theme);
     return vm(this.draftStore, this.wallpaper);
   }
 }

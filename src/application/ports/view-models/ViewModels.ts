@@ -1,4 +1,5 @@
 import type { PhaseIndex } from "@domain/value-objects/PhaseColor";
+import type { AppTheme } from "@domain/entities/Settings";
 
 export type RowStatus = "passed" | "current" | "upcoming";
 
@@ -47,6 +48,8 @@ export interface HomeView {
   hasWallpaper: boolean;
   wallpaperUri: string | null;
   wallpaperBlur: number;
+  /** Home look without a wallpaper; a wallpaper always uses frosted glass. */
+  theme: AppTheme;
   colorActiveBars: boolean;
   accentHex: string;
   paletteName: string;
@@ -76,6 +79,7 @@ export interface SettingsDraftVM {
   wallpaperBlur: number;
   wallpaperPreviewUri: string | null;
   hasWallpaper: boolean;
+  theme: AppTheme;
   /** 0 = Sunday … 6 = Saturday — the weekday tab being edited. */
   weekday: number;
   /** One row list per weekday; index 0 = Sunday … 6 = Saturday. */

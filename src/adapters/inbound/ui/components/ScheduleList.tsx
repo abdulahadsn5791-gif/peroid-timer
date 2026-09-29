@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View, type View as RNView } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
-import { tokens, adaptiveColors, panelMaterial, shadow } from "../design-system/tokens";
+import { tokens, adaptiveColors, panelMaterial, shadow, type ThemeName } from "../design-system/tokens";
 import type { ScheduleRowViewModel } from "@application/ports/view-models/ViewModels";
 import { hexToRgba } from "../utils/color";
 
@@ -14,6 +14,8 @@ interface Props {
   wallpaperBlur: number;
   /** Ref to the wallpaper `BlurTargetView` so the panel gets a real Android blur. */
   blurTarget?: React.RefObject<RNView | null> | null;
+  /** Base look without a wallpaper; a wallpaper always renders glassy. */
+  theme?: ThemeName;
 }
 
 /** "Ms. Khan · Room 12" — hides the separator when either part is missing. */
@@ -38,8 +40,8 @@ function RoomIcon({ color }: { color: string }) {
   );
 }
 
-export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper);
+export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget, theme = "light" }: Props) {
+  const adaptive = adaptiveColors(hasWallpaper, theme);
   const useBlur = hasWallpaper && !!blurTarget;
   const next = rows.find((row) => row.status === "upcoming");
   const content = [
@@ -69,7 +71,7 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
 
   const panelBase = [
     styles.panel,
-    panelMaterial(hasWallpaper),
+    panelMaterial(hasWallpaper, theme),
     shadow(1),
     { borderWidth: StyleSheet.hairlineWidth },
   ];

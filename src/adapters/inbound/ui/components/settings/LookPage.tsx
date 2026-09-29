@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StyleSheet, Text, TextInput, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { tokens } from "../../design-system/tokens";
+import { PressableScale } from "../PressableScale";
 import { ACCENT_PRESETS } from "@domain/value-objects/AccentColor";
 import { RING_PALETTES } from "@domain/value-objects/RingPalette";
 import type { SettingsActions } from "../../ports";
@@ -17,7 +18,6 @@ import {
   ToggleRow,
   WallpaperPreview,
 } from "./primitives";
-import { PressableScale } from "../PressableScale";
 
 interface Props {
   draft: SettingsDraftVM;
@@ -34,6 +34,35 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
   return (
     <PageScroll bottomInset={bottomInset}>
       <PageBody isWide={isWide}>
+        <SectionHeader
+          title="Home theme"
+          subtitle="Used when no wallpaper is set — a wallpaper always renders frosted glass"
+        />
+        <Card>
+          <View style={styles.segmentedWrap}>
+            <View style={styles.segmentedRow}>
+              {(["light", "dark"] as const).map((t) => {
+                const selected = draft.theme === t;
+                return (
+                  <PressableScale
+                    key={t}
+                    onPress={() => actions.previewTheme(t)}
+                    haptic="selection"
+                    style={[styles.segmentBtn, selected && { backgroundColor: accent }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>
+                      {t === "light" ? "Light" : "Dark"}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+        </Card>
+        <Hint>The home screen flips between the white and the dark look live as you toggle.</Hint>
+
         <SectionHeader title="App background" subtitle="Wallpaper behind the home screen only" />
         <Card>
           <View style={styles.backgroundRow}>
@@ -170,6 +199,27 @@ function basePaletteStyle(accent: string, selected: boolean): ViewStyle | undefi
 }
 
 const styles = StyleSheet.create({
+  segmentedWrap: { padding: tokens.spacing.md },
+  segmentedRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: tokens.radius.md,
+    padding: 3,
+    gap: 3,
+  },
+  segmentBtn: {
+    flex: 1,
+    minHeight: tokens.tap - 6,
+    borderRadius: tokens.radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentText: {
+    fontSize: tokens.text.subtext,
+    fontWeight: "600",
+    color: tokens.color.text.secondary,
+  },
+  segmentTextActive: { color: tokens.color.white },
   backgroundRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -8,6 +8,12 @@ import {
 import { DEFAULT_ACCENT, normalizeAccentColor, type AccentColor } from "../value-objects/AccentColor";
 import { paletteAt } from "../value-objects/RingPalette";
 
+export type AppTheme = "light" | "dark";
+
+export function normalizeTheme(value: unknown): AppTheme {
+  return value === "dark" ? "dark" : "light";
+}
+
 export interface Settings {
   /** One period list per weekday; an empty list = no lectures that day. */
   weekSchedule: WeekSchedule;
@@ -22,6 +28,8 @@ export interface Settings {
   alarmSoundUri: string | null;
   wallpaperBlur: number;
   wallpaperUri: string | null;
+  /** Base look for the no-wallpaper home screen (wallpaper mode stays glassy). */
+  theme: AppTheme;
   /** "weekday:periodId" of the last fired end-of-period alert (per-day dedupe). */
   lastNotifiedKey: string | null;
 }
@@ -40,6 +48,7 @@ export interface SettingsShape {
   alarmSoundUri?: string | null;
   wallpaperBlur?: number;
   wallpaperUri?: string | null;
+  theme?: AppTheme;
   lastNotifiedKey?: string | null;
 }
 
@@ -68,6 +77,7 @@ export function defaultSettings(): Settings {
     alarmSoundUri: null,
     wallpaperBlur: 0,
     wallpaperUri: null,
+    theme: "light",
     lastNotifiedKey: null,
   };
 }
@@ -91,6 +101,7 @@ export function settingsWith(overrides: SettingsShape): Settings {
     alarmSoundUri: normalizeAlarmSoundUri(overrides.alarmSoundUri ?? base.alarmSoundUri),
     wallpaperBlur: clampBlur(overrides.wallpaperBlur ?? base.wallpaperBlur),
     wallpaperUri: overrides.wallpaperUri ?? base.wallpaperUri,
+    theme: normalizeTheme(overrides.theme ?? base.theme),
     lastNotifiedKey: overrides.lastNotifiedKey ?? base.lastNotifiedKey,
   };
 }

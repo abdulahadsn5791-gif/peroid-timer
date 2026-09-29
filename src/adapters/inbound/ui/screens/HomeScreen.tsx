@@ -12,7 +12,7 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { BlurTargetView, BlurView } from "expo-blur";
-import { tokens } from "../design-system/tokens";
+import { tokens, adaptiveColors, panelMaterial } from "../design-system/tokens";
 import { Header } from "../components/Header";
 import { Ring, ringSizeFor } from "../components/Ring";
 import { ScheduleList } from "../components/ScheduleList";
@@ -59,8 +59,19 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
   const dismiss = () => closeSheet();
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: view.hasWallpaper ? "#000" : tokens.color.canvas }]}>
-      <StatusBar hidden style={view.hasWallpaper ? "light" : "dark"} />
+    <SafeAreaView
+      style={[
+        styles.screen,
+        {
+          backgroundColor: view.hasWallpaper
+            ? "#000"
+            : view.theme === "dark"
+              ? "#111827"
+              : tokens.color.canvas,
+        },
+      ]}
+    >
+      <StatusBar hidden style={view.hasWallpaper || view.theme === "dark" ? "light" : "dark"} />
 
       <BlurTargetView ref={sceneBlur} style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {view.hasWallpaper && view.wallpaperUri ? (
@@ -88,15 +99,15 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <Header todayLabel={view.todayLabel} hasWallpaper={view.hasWallpaper} accentHex={view.accentHex} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} onOpenSettings={open} />
+          <Header todayLabel={view.todayLabel} hasWallpaper={view.hasWallpaper} accentHex={view.accentHex} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} onOpenSettings={open} />
 
           <View style={isWide ? styles.widePane : styles.narrowPane}>
             <Animated.View style={[styles.ringSlot, zoom, isWide && styles.wideRingSlot]}>
-              <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} />
+              <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} theme={view.theme} />
             </Animated.View>
             {isWide ? (
               <View style={{ flex: 1, paddingTop: 8 }}>
-                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} />
+                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} />
               </View>
             ) : null}
           </View>
@@ -104,15 +115,33 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           {!isWide ? (
             <View style={styles.narrowListWrap}>
               {view.isEmptyDay ? (
-                <View style={styles.emptyDayCard}>
-                  <Text style={styles.emptyDayTitle}>No lectures today</Text>
-                  <Text style={styles.emptyDaySub}>
+                <View
+                  style={[
+                    styles.emptyDayCard,
+                    panelMaterial(view.hasWallpaper, view.theme),
+                    { borderWidth: StyleSheet.hairlineWidth },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.emptyDayTitle,
+                      { color: adaptiveColors(view.hasWallpaper, view.theme).primary },
+                    ]}
+                  >
+                    No lectures today
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptyDaySub,
+                      { color: adaptiveColors(view.hasWallpaper, view.theme).secondary },
+                    ]}
+                  >
                     This weekday's preset is empty — alarms and notifications are off. Add periods in
                     Settings to schedule this day.
                   </Text>
                 </View>
               ) : (
-                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} />
+                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} />
               )}
             </View>
           ) : null}
@@ -205,9 +234,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   emptyDayCard: {
     borderRadius: tokens.radius.lg,
-    backgroundColor: "rgba(255,255,255,0.72)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
     padding: tokens.spacing.xl,
     alignItems: "center",
     gap: 6,
