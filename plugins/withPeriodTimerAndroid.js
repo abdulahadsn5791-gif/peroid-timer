@@ -234,7 +234,14 @@ function withManifestEdits(config) {
     const manifest = cfg.modResults.manifest;
     const application = manifest.application[0];
 
-    manifest["uses-permission"] = (manifest["uses-permission"] || []).concat(permissionsFor());
+    // Only add permissions the Expo template doesn't already declare — a
+    // duplicate uses-permission element makes the manifest merger warn on
+    // every release build (FOREGROUND_SERVICE and VIBRATE ship upstream).
+    const existing = new Set(
+      (manifest["uses-permission"] || []).map((p) => p.$["android:name"]),
+    );
+    const additions = permissionsFor().filter((p) => !existing.has(p.$["android:name"]));
+    manifest["uses-permission"] = (manifest["uses-permission"] || []).concat(additions);
 
     application.receiver = (application.receiver || []).concat(receiversFor());
     application.service = (application.service || []).concat(serviceLiveNotification());
