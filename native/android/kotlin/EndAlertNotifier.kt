@@ -28,11 +28,12 @@ object EndAlertNotifier {
     const val CHANNEL_ID = "period-timer-alarm"
     const val ACTION_STOP = "com.periodtimer.ACTION_STOP_ALARM"
     private const val BASE_NOTIFICATION_ID = 2001
-    private const val EXTRA_NOTIFICATION_ID = "notificationId"
 
-    fun ensureChannel(context: Context) {
-        applyChannelSound(context, null)
-    }
+    /** End-of-period alert ids are derived from BASE_NOTIFICATION_ID. */
+    private val ALERT_ID_RANGE = BASE_NOTIFICATION_ID..(BASE_NOTIFICATION_ID + 999)
+
+    /** Read back by TimerAlarmReceiver when the "Stop alarm" action fires. */
+    const val EXTRA_NOTIFICATION_ID = "notificationId"
 
     /**
      * (Re)publishes the alarm channel with the given ringtone on the ALARM
@@ -113,17 +114,19 @@ object EndAlertNotifier {
             .setColorized(true)
             .addAction(R.drawable.ic_stat_clock, "Stop alarm", stopIntent)
 
-        // The channel owns the audio on Android 8+; only post a notification
-        // when there is something to ring, otherwise a silent end-of-period
-        // would still buzz the phone.
+        // The channel owns the audio on Android 8+, and an existing channel keeps
+        // whatever sound it was last given. So the sound toggle decides the
+        // CHANNEL, not just the builder: the ringing alarm channel when sound
+        // is on, and the app's silent countdown channel when it is off. Posting
+        // the quiet alert on the alarm channel would still ring it.
         if (snapshot.soundEnabled) {
             applyChannelSound(context, snapshot.alarmSoundUri)
             manager.notify(id, builder.build())
         } else {
-            // No sound: a quiet heads-up instead of the alarm channel.
+            OngoingNotifier.ensureChannel(context)
             manager.notify(
                 id,
-                NotificationCompat.Builder(context, CHANNEL_ID)
+                NotificationCompat.Builder(context, OngoingNotifier.CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_clock)
                     .setContentTitle("${ended.name} ended")
                     .setContentText(if (next != null) "Up next: ${next.name} at ${next.startLabel}" else "All periods complete")
@@ -146,11 +149,15 @@ object EndAlertNotifier {
     /**
      * Silences the alarm: cancelling the notification stops its channel sound,
      * so this is the whole of "stop". Exposed to JS for the in-app control.
+     *
+     * Matches both the ringing channel and the quiet variant, which is posted
+     * on the app's silent countdown channel so it never rings.
      */
     fun cancelAllAlarms(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         for (n in manager.activeNotifications) {
-            if (n.notification.channelId == CHANNEL_ID) manager.cancel(n.id)
+            val isEndAlert = n.notification.channelId == CHANNEL_ID || n.id in ALERT_ID_RANGE
+            if (isEndAlert) manager.cancel(n.id)
         }
     }
 
