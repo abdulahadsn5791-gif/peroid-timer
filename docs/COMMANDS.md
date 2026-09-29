@@ -75,6 +75,30 @@ $ANDROID_HOME/build-tools/*/aapt2 dump badging <app.apk>
 apksigner verify --print-certs <app.apk>
 ```
 
+### Fingerprints are compared format-blind
+
+The CI check (`.github/workflows/release.yml`, "Collect the APK") reads the
+signing cert with `apksigner verify --print-certs` and compares it to the
+`EXPECTED` constant above. The two sides never look alike on paper:
+apksigner prints **lowercase hex without colons**
+(`aedc06eacb98...`), while the documented fingerprint is uppercase with
+colons. Both are normalized — colons stripped, lowercased — before the
+comparison, so formatting can never fail a correctly signed APK.
+
+Don't reach for `keytool -printcert -jarfile` here: it only reads v1 (JAR)
+signatures, and with minSdk 24 AGP emits v2/v3 signatures only, so keytool
+prints nothing and the check would false-fail. If you verify by hand,
+normalize the same way CI does:
+
+```sh
+apksigner verify --print-certs <app.apk> \
+  | grep -o 'certificate SHA-256 digest:.*' | sed 's/^[^:]*: *//' \
+  | tr -d ':' | tr '[:upper:]' '[:lower:]'
+```
+
+If the release key is ever replaced, update both the fingerprint above and
+the `EXPECTED` constant in `release.yml` in the same commit.
+
 ## What the config plugin does (steps 1–4 run automatically inside prebuild)
 1. Patches `AndroidManifest` — FGS + exact-alarm permissions, the
    `PeriodForegroundService` (specialUse), alarm/boot receivers, home widget.
