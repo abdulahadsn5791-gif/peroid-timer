@@ -8,6 +8,8 @@ interface Props {
   accent: string;
   onValueChange: (next: boolean) => void;
   accessibilityLabel?: string;
+  /** Track fill while off — dark surfaces need a lighter one to stay visible. */
+  offTrackColor?: string;
 }
 
 const TRACK_WIDTH = 44;
@@ -23,7 +25,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * springs across, driven by reanimated on the UI thread. Plays a selection
  * haptic when toggled.
  */
-export function Toggle({ value, accent, onValueChange, accessibilityLabel }: Props) {
+export function Toggle({ value, accent, onValueChange, accessibilityLabel, offTrackColor }: Props) {
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export function Toggle({ value, accent, onValueChange, accessibilityLabel }: Pro
   }, [value, progress]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], ["rgba(0,0,0,0.10)", accent]),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [offTrackColor ?? "rgba(0,0,0,0.10)", accent]),
   }));
 
   const thumbStyle = useAnimatedStyle(() => ({

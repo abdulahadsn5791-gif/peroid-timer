@@ -134,12 +134,21 @@ export function ToggleRow({
   onChange: (v: boolean) => void;
   last?: boolean;
 }) {
+  const pal = usePal();
   return (
     <Row
       label={label}
       sublabel={sublabel}
       last={last}
-      control={<Toggle value={value} accent={accent} onValueChange={onChange} accessibilityLabel={label} />}
+      control={
+        <Toggle
+          value={value}
+          accent={accent}
+          onValueChange={onChange}
+          accessibilityLabel={label}
+          offTrackColor={pal.toggleOff}
+        />
+      }
     />
   );
 }
@@ -373,7 +382,7 @@ function TimeEditor({
         <Stepper label="Minute" value={String(minutes).padStart(2, "0")} onInc={incMinute} onDec={decMinute} />
         <View style={styles.ampmBox}>
           <Text style={styles.stepLabel}>AM / PM</Text>
-          <View style={styles.ampmRow}>
+          <View style={[styles.ampmRow, { backgroundColor: pal.inputBg }]}>
             {(["AM", "PM"] as const).map((p) => {
               const isActive = p === period;
               return (
@@ -572,8 +581,9 @@ export function WallpaperPreview({
   label: string;
 }) {
   const previewTarget = useRef<RNView | null>(null);
+  const pal = usePal();
   return (
-    <View style={styles.phonePreview}>
+    <View style={[styles.phonePreview, { backgroundColor: pal.surfaceAlt, borderColor: pal.hairlineStrong }]}>
       <BlurTargetView ref={previewTarget} style={StyleSheet.absoluteFill} pointerEvents="none">
         {previewUri ? (
           <Image source={{ uri: previewUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -962,7 +972,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.tap,
     paddingHorizontal: 10,
   },
-  ampmIdle: { backgroundColor: tokens.color.surface2 },
+  ampmIdle: { backgroundColor: "transparent" },
   ampmText: {
     fontSize: tokens.text.subtext,
     fontWeight: "600",
@@ -981,7 +991,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  phonePreviewEmpty: { backgroundColor: "rgba(255,255,255,0.55)" },
+  phonePreviewEmpty: { backgroundColor: "transparent" },
   phonePreviewScrim: {
     position: "absolute",
     left: 0,

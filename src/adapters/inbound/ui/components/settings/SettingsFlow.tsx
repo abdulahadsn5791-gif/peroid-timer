@@ -212,7 +212,7 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
                         ) : null}
                         <ChevronIcon color={pal.textTertiary} />
                       </View>
-                      <View style={styles.menuSeparator} />
+                      <View style={[styles.menuSeparator, { backgroundColor: pal.hairline }]} />
                     </PressableScale>
                   );
                 })}
@@ -250,7 +250,9 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
             >
               <Text style={styles.saveText}>Save &amp; apply</Text>
             </PressableScale>
-            <Text style={styles.dirtyNote}>{draft.dirty ? "Unsaved changes" : "All changes saved"}</Text>
+            <Text style={[styles.dirtyNote, draft.theme === "dark" && styles.dirtyNoteDark]}>
+              {draft.dirty ? "Unsaved changes" : "All changes saved"}
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -378,7 +380,6 @@ const styles = StyleSheet.create({
   },
   menuSeparator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: tokens.color.hairlineStrong,
   },
   versionText: {
     textAlign: "center",
@@ -414,4 +415,5 @@ const styles = StyleSheet.create({
     fontSize: tokens.text.micro,
     color: tokens.color.text.tertiary,
   },
+  dirtyNoteDark: { color: "rgba(235,235,245,0.30)" },
 });

@@ -142,6 +142,8 @@ export interface ThemePalette {
   onAccent: string;
   /** Neutral dot / disabled marker. */
   disabled: string;
+  /** Switch track while off. */
+  toggleOff: string;
 }
 
 /**
@@ -164,6 +166,7 @@ export const themePalette = (theme: ThemeName): ThemePalette => {
       hairlineStrong: "rgba(84,84,88,0.85)",
       onAccent: "#FFFFFF",
       disabled: "rgba(235,235,245,0.18)",
+      toggleOff: "rgba(120,120,128,0.32)",
     };
   }
   return {
@@ -178,5 +181,6 @@ export const themePalette = (theme: ThemeName): ThemePalette => {
     hairlineStrong: "rgba(60,60,67,0.22)",
     onAccent: "#FFFFFF",
     disabled: "rgba(60,60,67,0.18)",
+    toggleOff: "rgba(0,0,0,0.10)",
   };
 };

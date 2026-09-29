@@ -64,7 +64,7 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
       return (
         <Fragment key={row.id}>
           {showSeparator ? <View style={[styles.separator, { backgroundColor: separatorColor }]} /> : null}
-          <PeriodRow row={row} accentHex={accentHex} hasWallpaper={hasWallpaper} adaptive={adaptive} />
+          <PeriodRow row={row} accentHex={accentHex} hasWallpaper={hasWallpaper} adaptive={adaptive} theme={theme} />
         </Fragment>
       );
     }),
@@ -99,11 +99,13 @@ function PeriodRow({
   accentHex,
   hasWallpaper,
   adaptive,
+  theme,
 }: {
   row: ScheduleRowViewModel;
   accentHex: string;
   hasWallpaper: boolean;
   adaptive: ReturnType<typeof adaptiveColors>;
+  theme: ThemeName;
 }) {
   const meta = metaLabel(row.teacher, row.room);
 
@@ -159,27 +161,26 @@ function PeriodRow({
               },
             ]}
           />
-        </View>
-        {meta ? (
-          <View style={styles.currentMetaRow}>
-            {row.teacher ? (
-              <View style={styles.metaChip}>
-                <TeacherIcon color={adaptive.secondary} />
-                <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
-                  {row.teacher}
-                </Text>
-              </View>
-            ) : null}
-            {row.room ? (
-              <View style={styles.metaChip}>
-                <RoomIcon color={adaptive.secondary} />
-                <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
-                  {row.room}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+        </View>          {meta ? (
+            <View style={styles.currentMetaRow}>
+              {row.teacher ? (
+                <View style={[styles.metaChip, { backgroundColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }]}>
+                  <TeacherIcon color={adaptive.secondary} />
+                  <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
+                    {row.teacher}
+                  </Text>
+                </View>
+              ) : null}
+              {row.room ? (
+                <View style={[styles.metaChip, { backgroundColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }]}>
+                  <RoomIcon color={adaptive.secondary} />
+                  <Text numberOfLines={1} style={[styles.metaChipText, { color: adaptive.secondary }]}>
+                    {row.room}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
       </View>
     );
   }
