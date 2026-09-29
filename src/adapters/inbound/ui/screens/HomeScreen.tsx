@@ -118,12 +118,17 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           ) : null}
         </Animated.ScrollView>
 
-        {sheetOpen && draft ? (
-          <SettingsFlow draft={draft} deps={deps} onDismiss={dismiss} sceneBlur={sceneBlur} isWide={isWide} />
-        ) : null}
       </BlurTargetView>
 
       <FlashLayer active={flash.key > 0} periodName={flash.periodName} flashKey={flash.key} />
+
+      {/* Rendered OUTSIDE the scene BlurTargetView — the panel's own BlurView
+          samples this target, and nesting the sampler inside the sampled tree
+          crashes natively on Android (dimezis recursion). The old sheet sat
+          here too; v1.3.0/1.3.1 crashed because the flow moved inside. */}
+      {sheetOpen && draft ? (
+        <SettingsFlow draft={draft} deps={deps} onDismiss={dismiss} sceneBlur={sceneBlur} isWide={isWide} />
+      ) : null}
     </SafeAreaView>
   );
 }
