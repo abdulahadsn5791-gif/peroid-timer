@@ -112,12 +112,66 @@ export const panelMaterial = (hasWallpaper: boolean, theme: ThemeName = "light")
   }
   if (theme === "dark") {
     return {
-      background: "rgba(255,255,255,0.06)",
-      borderColor: "rgba(255,255,255,0.12)",
+      background: "#182234",
+      borderColor: "rgba(255,255,255,0.08)",
     };
   }
   return {
-    background: "rgba(255,255,255,0.65)",
+    background: "#FFFFFF",
     borderColor: tokens.color.hairline,
+  };
+};
+
+export interface ThemePalette {
+  canvas: string;
+  /** Elevated card surface (solid — cards must read crisply on the canvas). */
+  surface: string;
+  /** Slightly recessed surface: inputs, steppers, chips on cards. */
+  surfaceAlt: string;
+  inputBg: string;
+  textPrimary: string;
+  textSecondary: string;
+  textTertiary: string;
+  hairline: string;
+  hairlineStrong: string;
+  /** Text/icons drawn on top of the accent color. */
+  onAccent: string;
+  /** Neutral dot / disabled marker. */
+  disabled: string;
+}
+
+/**
+ * Named palette for the no-wallpaper home look AND the settings pages, which
+ * follow the same theme choice. Wallpaper mode never uses this — it stays
+ * frosted glass over the photo.
+ */
+export const themePalette = (theme: ThemeName): ThemePalette => {
+  if (theme === "dark") {
+    return {
+      canvas: "#0B1220",
+      surface: "#182234",
+      surfaceAlt: "#1F2B3F",
+      inputBg: "rgba(255,255,255,0.07)",
+      textPrimary: "rgba(255,255,255,0.94)",
+      textSecondary: "rgba(255,255,255,0.64)",
+      textTertiary: "rgba(255,255,255,0.42)",
+      hairline: "rgba(255,255,255,0.08)",
+      hairlineStrong: "rgba(255,255,255,0.14)",
+      onAccent: "#FFFFFF",
+      disabled: "rgba(255,255,255,0.24)",
+    };
+  }
+  return {
+    canvas: "#F3F4F6",
+    surface: "#FFFFFF",
+    surfaceAlt: "#F3F4F6",
+    inputBg: "rgba(0,0,0,0.04)",
+    textPrimary: tokens.color.text.primary,
+    textSecondary: tokens.color.text.secondary,
+    textTertiary: tokens.color.text.tertiary,
+    hairline: tokens.color.hairline,
+    hairlineStrong: tokens.color.hairlineStrong,
+    onAccent: "#FFFFFF",
+    disabled: tokens.color.text.disabled,
   };
 };

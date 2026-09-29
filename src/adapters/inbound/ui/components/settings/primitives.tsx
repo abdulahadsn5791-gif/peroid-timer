@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Image,
   PanResponder,
@@ -12,11 +12,26 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { BlurTargetView, BlurView } from "expo-blur";
-import { tokens, shadow } from "../../design-system/tokens";
+import { tokens, themePalette, type ThemeName, type ThemePalette } from "../../design-system/tokens";
 import { PressableScale } from "../PressableScale";
 import { Toggle } from "../Toggle";
 import { minutesOfDayToLabel, minutesToHour12, toHHMM } from "@domain/value-objects/TimeOfDay";
 import type { PeriodDraftVM, WeekPeriodsVM } from "./types";
+
+// ---------------------------------------------------------------------------
+// Settings theme
+// ---------------------------------------------------------------------------
+
+const SettingsThemeContext = createContext<ThemeName>("light");
+
+export function SettingsTheme({ theme, children }: { theme: ThemeName; children: ReactNode }) {
+  return <SettingsThemeContext.Provider value={theme}>{children}</SettingsThemeContext.Provider>;
+}
+
+/** Palette for the surface the settings page is drawn on (light or dark). */
+export function usePal(): ThemePalette {
+  return themePalette(useContext(SettingsThemeContext));
+}
 
 // ---------------------------------------------------------------------------
 // Layout
@@ -35,17 +50,19 @@ export function PageBody({ children, isWide }: { children: ReactNode; isWide: bo
 }
 
 export function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const pal = usePal();
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+      <Text style={[styles.sectionTitle, { color: pal.textPrimary }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.sectionSubtitle, { color: pal.textTertiary }]}>{subtitle}</Text> : null}
     </View>
   );
 }
 
 /** Inset-grouped card (iOS Settings style). */
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  const pal = usePal();
+  return <View style={[styles.card, { backgroundColor: pal.surface, borderColor: pal.hairline }, style]}>{children}</View>;
 }
 
 export function CardRow({ children }: { children: ReactNode }) {
@@ -57,7 +74,8 @@ export function CardSeparator() {
 }
 
 export function Hint({ children }: { children: ReactNode }) {
-  return <Text style={styles.hint}>{children}</Text>;
+  const pal = usePal();
+  return <Text style={[styles.hint, { color: pal.textTertiary }]}>{children}</Text>;
 }
 
 export function Row({
@@ -73,11 +91,12 @@ export function Row({
   onPress?: () => void;
   last?: boolean;
 }) {
+  const pal = usePal();
   const body = (
     <View style={styles.rowInner}>
       <View style={styles.rowTextWrap}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.rowSublabel}>{sublabel}</Text> : null}
+        <Text style={[styles.rowLabel, { color: pal.textPrimary }]}>{label}</Text>
+        {sublabel ? <Text style={[styles.rowSublabel, { color: pal.textTertiary }]}>{sublabel}</Text> : null}
       </View>
       {control}
     </View>
@@ -91,7 +110,7 @@ export function Row({
       ) : (
         body
       )}
-      {last ? null : <View style={styles.rowSeparator} />}
+      {last ? null : <View style={[styles.rowSeparator, { backgroundColor: pal.hairline }]} />}
     </View>
   );
 }
@@ -136,22 +155,29 @@ export function GhostButton({
   danger?: boolean;
   flex?: boolean;
 }) {
+  const pal = usePal();
   return (
     <PressableScale
       onPress={onPress}
       haptic={danger ? "medium" : "selection"}
-      style={[styles.ghostBtn, flex && styles.btnFlex]}
+      style={[styles.ghostBtn, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }, flex && styles.btnFlex]}
       accessibilityRole="button"
     >
-      <Text style={[styles.ghostBtnText, danger && { color: tokens.color.danger }]}>{label}</Text>
+      <Text style={[styles.ghostBtnText, { color: danger ? tokens.color.danger : pal.textPrimary }]}>{label}</Text>
     </PressableScale>
   );
 }
 
 export function DashedAddButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const pal = usePal();
   return (
-    <PressableScale onPress={onPress} haptic="selection" style={styles.addBtn} accessibilityRole="button">
-      <Text style={styles.addBtnText}>{label}</Text>
+    <PressableScale
+      onPress={onPress}
+      haptic="selection"
+      style={[styles.addBtn, { borderColor: pal.disabled, backgroundColor: pal.inputBg }]}
+      accessibilityRole="button"
+    >
+      <Text style={[styles.addBtnText, { color: pal.textSecondary }]}>{label}</Text>
     </PressableScale>
   );
 }
@@ -173,6 +199,7 @@ export function WeekdayTabs({
   weekPeriods: WeekPeriodsVM;
   onSelect: (index: number) => void;
 }) {
+  const pal = usePal();
   return (
     <View style={styles.weekdayRow}>
       {WEEKDAY_TABS.map((label, index) => {
@@ -183,11 +210,11 @@ export function WeekdayTabs({
             key={label}
             onPress={() => onSelect(index)}
             haptic="selection"
-            style={[styles.weekdayTab, isActive && { backgroundColor: accent }]}
+            style={[styles.weekdayTab, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }, isActive && { backgroundColor: accent, borderColor: "transparent" }]}
             accessibilityRole="tab"
             accessibilityLabel={`${label}: ${count} ${count === 1 ? "period" : "periods"}`}
           >
-            <Text style={[styles.weekdayTabText, isActive && styles.weekdayTabTextActive]}>{label}</Text>
+            <Text style={[styles.weekdayTabText, { color: pal.textSecondary }, isActive && styles.weekdayTabTextActive]}>{label}</Text>
             <View
               style={[
                 styles.weekdayDot,
@@ -243,6 +270,7 @@ export function BlurSlider({
     [valueFromX, onValueChange],
   );
 
+  const pal = usePal();
   return (
     <View
       ref={trackRef}
@@ -250,7 +278,7 @@ export function BlurSlider({
       onLayout={(e) => {
         widthRef.current = e.nativeEvent.layout.width;
       }}
-      style={styles.sliderTrack}
+      style={[styles.sliderTrack, { backgroundColor: pal.inputBg }]}
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel="Wallpaper blur"
@@ -284,14 +312,15 @@ function ArrowSvg({ up }: { up: boolean }) {
 
 /** Amplitude-tinted chip showing "name · start → end". */
 function PeriodSummaryChip({ period, index, accent }: { period: PeriodDraftVM; index: number; accent: string }) {
+  const pal = usePal();
   return (
     <View style={styles.periodSummary}>
       <View style={[styles.periodNumberBadge, { backgroundColor: accent }]}>
         <Text style={styles.periodNumberText}>{index + 1}</Text>
       </View>
       <View style={styles.periodSummaryTextWrap}>
-        <Text numberOfLines={1} style={styles.periodSummaryName}>{period.name}</Text>
-        <Text style={styles.periodSummaryTimes}>
+        <Text numberOfLines={1} style={[styles.periodSummaryName, { color: pal.textPrimary }]}>{period.name}</Text>
+        <Text style={[styles.periodSummaryTimes, { color: pal.textTertiary }]}>
           {period.startLabel} → {period.endLabel}
         </Text>
       </View>
@@ -315,6 +344,7 @@ function TimeEditor({
 }) {
   const base = Number.parseInt(hhmm.slice(0, 2), 10) * 60 + Number.parseInt(hhmm.slice(3, 5), 10);
   const { hour12, minutes, period } = minutesToHour12(base);
+  const pal = usePal();
 
   const compose = (h: number, m: number, p: "AM" | "PM") => {
     const h24 = p === "AM" ? (h === 12 ? 0 : h) : h === 12 ? 12 : h + 12;
@@ -326,9 +356,9 @@ function TimeEditor({
   const decMinute = () => compose(hour12, minutes === 0 ? 59 : minutes - 1, period);
 
   return (
-    <View style={styles.timeEditor}>
+    <View style={[styles.timeEditor, { backgroundColor: pal.inputBg, borderColor: pal.hairlineStrong, borderWidth: StyleSheet.hairlineWidth }]}>
       <View style={styles.timeEditorHeader}>
-        <Text style={styles.timeEditorTitle}>{field === "start" ? "Set start" : "Set end"}</Text>
+        <Text style={[styles.timeEditorTitle, { color: pal.textSecondary }]}>{field === "start" ? "Set start" : "Set end"}</Text>
         <Text style={[styles.timeEditorLive, { color: accent }]}>{minutesOfDayToLabel(base)}</Text>
         <PressableScale onPress={onDone} haptic="selection" style={styles.doneBtn} accessibilityRole="button">
           <Text style={[styles.doneText, { color: accent }]}>Done</Text>
@@ -372,15 +402,16 @@ function Stepper({
   onInc: () => void;
   onDec: () => void;
 }) {
+  const pal = usePal();
   return (
     <View style={styles.stepBox}>
-      <Text style={styles.stepLabel}>{label}</Text>
-      <PressableScale onPress={onInc} haptic="selection" style={styles.stepBtn} accessibilityRole="button">
-        <Text style={styles.stepBtnText}>+</Text>
+      <Text style={[styles.stepLabel, { color: pal.textTertiary }]}>{label}</Text>
+      <PressableScale onPress={onInc} haptic="selection" style={[styles.stepBtn, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }]} accessibilityRole="button">
+        <Text style={[styles.stepBtnText, { color: pal.textPrimary }]}>+</Text>
       </PressableScale>
-      <Text style={styles.stepValue}>{value}</Text>
-      <PressableScale onPress={onDec} haptic="selection" style={styles.stepBtn} accessibilityRole="button">
-        <Text style={styles.stepBtnText}>−</Text>
+      <Text style={[styles.stepValue, { color: pal.textPrimary }]}>{value}</Text>
+      <PressableScale onPress={onDec} haptic="selection" style={[styles.stepBtn, { backgroundColor: pal.surface, borderColor: pal.hairlineStrong }]} accessibilityRole="button">
+        <Text style={[styles.stepBtnText, { color: pal.textPrimary }]}>−</Text>
       </PressableScale>
     </View>
   );
@@ -415,6 +446,7 @@ export function PeriodCard({
   onMoveDown: () => void;
   onRemove: () => void;
 }) {
+  const pal = usePal();
   return (
     <Card style={styles.periodCard}>
       <PressableScale
@@ -445,56 +477,56 @@ export function PeriodCard({
           <TextInput
             value={period.name}
             onChangeText={onNameChange}
-            style={styles.nameInput}
+            style={[styles.nameInput, { backgroundColor: pal.inputBg, color: pal.textPrimary }]}
             placeholder="Period name"
-            placeholderTextColor={tokens.color.text.tertiary}
+            placeholderTextColor={pal.textTertiary}
             accessibilityLabel="Period name"
           />
           <View style={styles.periodTimes}>
             <PressableScale
               onPress={onStartPress}
               haptic="selection"
-              style={styles.timeBtn}
+              style={[styles.timeBtn, { backgroundColor: pal.inputBg }]}
               accessibilityRole="button"
               accessibilityLabel="Set start time"
             >
-              <Text style={styles.timeText}>{period.startLabel}</Text>
+              <Text style={[styles.timeText, { color: pal.textPrimary }]}>{period.startLabel}</Text>
             </PressableScale>
-            <Text style={styles.timeSep}>→</Text>
+            <Text style={[styles.timeSep, { color: pal.textTertiary }]}>→</Text>
             <PressableScale
               onPress={onEndPress}
               haptic="selection"
-              style={styles.timeBtn}
+              style={[styles.timeBtn, { backgroundColor: pal.inputBg }]}
               accessibilityRole="button"
               accessibilityLabel="Set end time"
             >
-              <Text style={styles.timeText}>{period.endLabel}</Text>
+              <Text style={[styles.timeText, { color: pal.textPrimary }]}>{period.endLabel}</Text>
             </PressableScale>
           </View>
           <View style={styles.metaRow}>
-            <View style={styles.metaInputWrap}>
+            <View style={[styles.metaInputWrap, { backgroundColor: pal.inputBg }]}>
               <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-                <Path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 110 8 4 4 0 010-8z" stroke={tokens.color.text.tertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M12 3a4 4 0 110 8 4 4 0 010-8z" stroke={pal.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
               <TextInput
                 value={period.teacher ?? ""}
                 onChangeText={onTeacherChange}
-                style={styles.metaInput}
+                style={[styles.metaInput, { color: pal.textPrimary }]}
                 placeholder="Teacher"
-                placeholderTextColor={tokens.color.text.tertiary}
+                placeholderTextColor={pal.textTertiary}
                 accessibilityLabel="Teacher name"
               />
             </View>
-            <View style={styles.metaInputWrap}>
+            <View style={[styles.metaInputWrap, { backgroundColor: pal.inputBg }]}>
               <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-                <Path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke={tokens.color.text.tertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" stroke={pal.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
               <TextInput
                 value={period.room ?? ""}
                 onChangeText={onRoomChange}
-                style={styles.metaInput}
+                style={[styles.metaInput, { color: pal.textPrimary }]}
                 placeholder="Room"
-                placeholderTextColor={tokens.color.text.tertiary}
+                placeholderTextColor={pal.textTertiary}
                 accessibilityLabel="Room number"
               />
             </View>

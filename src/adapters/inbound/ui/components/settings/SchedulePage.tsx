@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { tokens } from "../../design-system/tokens";
+import { usePal } from "./primitives";
 import type { SettingsActions } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
 import {
@@ -30,6 +31,7 @@ interface Props {
  */
 export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
+  const pal = usePal();
   const dayPeriods = draft.periods;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [timeField, setTimeField] = useState<"start" | "end" | null>(null);
@@ -99,8 +101,12 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
           ))}
           {dayPeriods.length === 0 ? (
             <View style={styles.emptyDayBox}>
-              <Text style={styles.emptyDayText}>No lectures on {WEEKDAY_TABS[draft.weekday]}</Text>
-              <Text style={styles.emptyDaySub}>Add a period below to schedule this day.</Text>
+              <Text style={[styles.emptyDayText, { color: pal.textSecondary }]}>
+                No lectures on {WEEKDAY_TABS[draft.weekday]}
+              </Text>
+              <Text style={[styles.emptyDaySub, { color: pal.textTertiary }]}>
+                Add a period below to schedule this day.
+              </Text>
             </View>
           ) : null}
         </View>

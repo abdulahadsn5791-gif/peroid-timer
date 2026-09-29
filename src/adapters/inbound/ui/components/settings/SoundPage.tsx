@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { tokens } from "../../design-system/tokens";
 import type { SettingsActions } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
-import { Card, Hint, PageBody, PageScroll, Row, SectionHeader, ToggleRow } from "./primitives";
+import { Card, Hint, PageBody, PageScroll, Row, SectionHeader, ToggleRow, usePal } from "./primitives";
 import { PressableScale } from "../PressableScale";
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
 /** Notifications, end-of-period sound and the custom alarm ringtone. */
 export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
+  const pal = usePal();
   const ringtoneName = draft.alarmSoundUri ? draft.alarmSoundUri.split("/").pop() : null;
 
   return (
@@ -54,7 +55,7 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
               <PressableScale
                 onPress={() => actions.pickAlarmSound()}
                 haptic="light"
-                style={[styles.pickBtn, { borderColor: accent }]}
+                style={[styles.pickBtn, { borderColor: accent, backgroundColor: pal.surface }]}
                 accessibilityRole="button"
               >
                 <Text style={[styles.pickBtnText, { color: accent }]}>Choose</Text>
@@ -69,7 +70,7 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
                 <PressableScale
                   onPress={() => actions.clearAlarmSound()}
                   haptic="selection"
-                  style={[styles.pickBtn, { borderColor: tokens.color.hairlineStrong }]}
+                  style={[styles.pickBtn, { borderColor: pal.hairlineStrong, backgroundColor: pal.surface }]}
                   accessibilityRole="button"
                 >
                   <Text style={[styles.pickBtnText, { color: tokens.color.danger }]}>Reset</Text>

@@ -42,6 +42,7 @@ function RoomIcon({ color }: { color: string }) {
 
 export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget, theme = "light" }: Props) {
   const adaptive = adaptiveColors(hasWallpaper, theme);
+  const separatorColor = hasWallpaper ? "rgba(0,0,0,0.06)" : theme === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)";
   const useBlur = hasWallpaper && !!blurTarget;
   const next = rows.find((row) => row.status === "upcoming");
   const content = [
@@ -57,12 +58,12 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
         </View>
       ) : null}
     </View>,
-    <View key="header-sep" style={styles.separator} />,
+    <View key="header-sep" style={[styles.separator, { backgroundColor: separatorColor }]} />,
     ...rows.map((row, index) => {
       const showSeparator = index > 0 && rows[index - 1].status !== "current" && row.status !== "current";
       return (
         <Fragment key={row.id}>
-          {showSeparator ? <View style={styles.separator} /> : null}
+          {showSeparator ? <View style={[styles.separator, { backgroundColor: separatorColor }]} /> : null}
           <PeriodRow row={row} accentHex={accentHex} hasWallpaper={hasWallpaper} adaptive={adaptive} />
         </Fragment>
       );

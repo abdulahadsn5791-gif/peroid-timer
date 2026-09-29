@@ -5,12 +5,12 @@ import Svg, { Path, Circle as SCircle, Line } from "react-native-svg";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideInRight, SlideOutDown, SlideOutRight } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { tokens } from "../../design-system/tokens";
+import { tokens, themePalette } from "../../design-system/tokens";
 import type { AppDeps } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
 import { RING_PALETTES } from "@domain/value-objects/RingPalette";
 import { PressableScale } from "../PressableScale";
-import { PageBody } from "./primitives";
+import { PageBody, SettingsTheme, usePal } from "./primitives";
 import type { SettingsRoute } from "./types";
 import { SchedulePage } from "./SchedulePage";
 import { LookPage } from "./LookPage";
@@ -68,8 +68,17 @@ function CloseIcon({ color }: { color: string }) {
  * pinned to the bottom bar on every page.
  */
 export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
+  return (
+    <SettingsTheme theme={draft.theme}>
+      <SettingsFlowInner draft={draft} deps={deps} onDismiss={onDismiss} isWide={isWide} />
+    </SettingsTheme>
+  );
+}
+
+function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never>) {
   const actions = deps.settingsActions;
   const accent = draft.accentColor;
+  const pal = themePalette(draft.theme);
   const insets = useSafeAreaInsets();
   // Live previews for the root menu rows — read from the draft so they stay
   // current after editing a sub-page.
@@ -107,18 +116,18 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
   const pageProps = { draft, actions, isWide, bottomInset: SAVE_BAR_HEIGHT + insets.bottom + 12 };
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: pal.canvas }]} pointerEvents="box-none">
       <Animated.View
         entering={SlideInDown.springify().damping(20).stiffness(190)}
         exiting={SlideOutDown.duration(220)}
         style={styles.panel}
       >
-        <View style={styles.panelSurface}>
+        <View style={[styles.panelSurface, { backgroundColor: pal.canvas }]}>
           <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
             {nav.route === "root" ? (
               <>
                 <View style={styles.headerSide}>
-                  <Text style={styles.headerTitle}>Settings</Text>
+                  <Text style={[styles.headerTitle, { color: pal.textPrimary }]}>Settings</Text>
                 </View>
                 <PressableScale
                   onPress={() => {
@@ -126,7 +135,7 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
                     onDismiss();
                   }}
                   haptic="light"
-                  style={styles.closeBtn}
+                  style={[styles.closeBtn, draft.theme === "dark" && styles.closeBtnDark]}
                   accessibilityRole="button"
                   accessibilityLabel="Close settings"
                 >
@@ -139,7 +148,7 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
                   <PressableScale onPress={popToRoot} haptic="light" style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Back to settings menu">
                     <BackIcon color={accent} />
                   </PressableScale>
-                  <Text style={styles.headerTitle}>{MENU.find((m) => m.route === nav.route)?.title ?? "Settings"}</Text>
+                  <Text style={[styles.headerTitle, { color: pal.textPrimary }]}>{MENU.find((m) => m.route === nav.route)?.title ?? "Settings"}</Text>
                 </View>
                 <PressableScale onPress={saveAndClose} haptic="medium" style={styles.headerSaveBtn} accessibilityRole="button" accessibilityLabel="Save and apply">
                   <Text style={[styles.headerSaveText, { color: accent }]}>Save</Text>
@@ -156,7 +165,7 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
               {nav.route === "root" ? (
               <Animated.View key="root" entering={FadeIn.duration(140)} exiting={FadeOut.duration(90)} style={styles.page}>
               <PageBody isWide={isWide}>
-                <Text style={[styles.rootSubtitle, { marginTop: tokens.spacing.md }]}>Everything is saved only when you tap Save.</Text>
+                <Text style={[styles.rootSubtitle, { marginTop: tokens.spacing.md, color: pal.textTertiary }]}>Everything is saved only when you tap Save.</Text>
                 {MENU.map((item) => {
                   const valueLabel =
                     item.route === "schedule"
@@ -174,11 +183,11 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
                     >
                       <View style={styles.menuRow}>
                         <View style={styles.menuTextWrap}>
-                          <Text style={styles.menuTitle}>{item.title}</Text>
-                          <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                          <Text style={[styles.menuTitle, { color: pal.textPrimary }]}>{item.title}</Text>
+                          <Text style={[styles.menuSubtitle, { color: pal.textTertiary }]}>{item.subtitle}</Text>
                         </View>
                         {item.route === "schedule" ? (
-                          <Text style={styles.menuValueText}>
+                          <Text style={[styles.menuValueText, draft.theme === "dark" && styles.menuValueTextDark]}>
                             {totalPeriods} {totalPeriods === 1 ? "period" : "periods"}
                           </Text>
                         ) : null}
@@ -195,19 +204,19 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
                             <View
                               style={[
                                 styles.statusDot,
-                                { backgroundColor: alertsOn ? tokens.color.success : tokens.color.text.disabled },
+                                { backgroundColor: alertsOn ? tokens.color.success : pal.disabled },
                               ]}
                             />
-                            <Text style={styles.menuValueText}>{alertsOn ? "On" : "Off"}</Text>
+                            <Text style={[styles.menuValueText, draft.theme === "dark" && styles.menuValueTextDark]}>{alertsOn ? "On" : "Off"}</Text>
                           </View>
                         ) : null}
-                        <ChevronIcon color={tokens.color.text.tertiary} />
+                        <ChevronIcon color={pal.textTertiary} />
                       </View>
                       <View style={styles.menuSeparator} />
                     </PressableScale>
                   );
                 })}
-                <Text style={styles.versionText}>Period Timer {appVersion}</Text>
+                <Text style={[styles.versionText, draft.theme === "dark" && styles.versionTextDark]}>Period Timer {appVersion}</Text>
               </PageBody>
               </Animated.View>
             ) : (
@@ -226,7 +235,13 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
           </KeyboardAvoidingView>
 
           {/* Pinned save bar — always reachable, no scrolling needed. */}
-          <View style={[styles.saveBar, { paddingBottom: insets.bottom + 10 }]}>
+          <View
+            style={[
+              styles.saveBar,
+              draft.theme === "dark" && styles.saveBarDark,
+              { paddingBottom: insets.bottom + 10 },
+            ]}
+          >
             <PressableScale
               onPress={saveAndClose}
               haptic="medium"
@@ -287,9 +302,13 @@ const styles = StyleSheet.create({
     borderRadius: tokens.tap / 2,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(0,0,0,0.05)",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: tokens.color.hairlineStrong,
+    borderColor: "rgba(0,0,0,0.10)",
+  },
+  closeBtnDark: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.14)",
   },
   headerSaveBtn: {
     minHeight: tokens.tap,
@@ -331,6 +350,7 @@ const styles = StyleSheet.create({
     color: tokens.color.text.tertiary,
     flexShrink: 0,
   },
+  menuValueTextDark: { color: "rgba(255,255,255,0.42)" },
   menuPreviewRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -366,13 +386,17 @@ const styles = StyleSheet.create({
     fontSize: tokens.text.micro,
     color: tokens.color.text.tertiary,
   },
+  versionTextDark: { color: "rgba(255,255,255,0.42)" },
   saveBar: {
     paddingHorizontal: tokens.spacing.xl,
     paddingTop: tokens.spacing.md,
     gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: tokens.color.hairlineStrong,
-    backgroundColor: tokens.color.white,
+    borderTopColor: "rgba(0,0,0,0.10)",
+    backgroundColor: "transparent",
+  },
+  saveBarDark: {
+    borderTopColor: "rgba(255,255,255,0.10)",
   },
   saveBtn: {
     minHeight: tokens.tap,

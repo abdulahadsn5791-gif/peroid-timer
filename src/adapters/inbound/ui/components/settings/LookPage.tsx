@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StyleSheet, Text, TextInput, View, type ViewStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { tokens } from "../../design-system/tokens";
+import { usePal } from "./primitives";
 import { PressableScale } from "../PressableScale";
 import { ACCENT_PRESETS } from "@domain/value-objects/AccentColor";
 import { RING_PALETTES } from "@domain/value-objects/RingPalette";
@@ -29,6 +30,7 @@ interface Props {
 /** Wallpaper, accent color, ring palettes and the "what gets colored" toggles. */
 export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
+  const pal = usePal();
   const [customHex, setCustomHex] = useState(draft.accentColor);
 
   return (
@@ -40,7 +42,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
         />
         <Card>
           <View style={styles.segmentedWrap}>
-            <View style={styles.segmentedRow}>
+            <View style={[styles.segmentedRow, { backgroundColor: pal.inputBg }]}>
               {(["light", "dark"] as const).map((t) => {
                 const selected = draft.theme === t;
                 return (
@@ -76,21 +78,21 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           <View style={styles.btnRow}>
             <PressableScale
               onPress={() => void actions.pickWallpaper()}
-              haptic="light"
-              style={[styles.halfBtn, styles.btnFlex]}
+ haptic="light"
+              style={[styles.halfBtn, { backgroundColor: pal.inputBg }, styles.btnFlex]}
               accessibilityRole="button"
             >
-              <Text style={styles.halfBtnText}>Choose photo</Text>
+              <Text style={[styles.halfBtnText, { color: pal.textPrimary }]}>Choose photo</Text>
             </PressableScale>
             <PressableScale
               onPress={() => actions.removeWallpaper()}
               haptic="selection"
-              style={[styles.halfBtn, styles.btnFlex]}
+              style={[styles.halfBtn, { backgroundColor: pal.inputBg }, styles.btnFlex]}
               accessibilityRole="button"
-            >
-              <Text style={[styles.halfBtnText, { color: tokens.color.danger }]}>Remove</Text>
+            >                  <Text style={[styles.halfBtnText, { color: tokens.color.danger }]}>Remove</Text>
             </PressableScale>
           </View>
+
         </Card>
         <Hint>Shown only behind the app home screen — it never touches your phone&apos;s wallpaper.</Hint>
 
@@ -113,9 +115,9 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
                 />
               );
             })}
-            <View style={styles.customSwatch}>
+            <View style={[styles.customSwatch, { backgroundColor: pal.inputBg }]}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                <Path d="M12 5v14M5 12h14" stroke={tokens.color.text.tertiary} strokeWidth={2} strokeLinecap="round" />
+                <Path d="M12 5v14M5 12h14" stroke={pal.textTertiary} strokeWidth={2} strokeLinecap="round" />
               </Svg>
               <TextInput
                 value={customHex}
@@ -125,7 +127,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
                 }}
                 autoCapitalize="none"
                 autoCorrect={false}
-                style={styles.hexInput}
+                style={[styles.hexInput, { color: pal.textPrimary }]}
                 accessibilityLabel="Custom accent hex"
               />
             </View>
