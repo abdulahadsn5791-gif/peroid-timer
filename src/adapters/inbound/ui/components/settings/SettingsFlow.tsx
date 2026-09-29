@@ -10,6 +10,7 @@ import type { AppDeps } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
 import { RING_PALETTES } from "@domain/value-objects/RingPalette";
 import { PressableScale } from "../PressableScale";
+import { PageBody } from "./primitives";
 import type { SettingsRoute } from "./types";
 import { SchedulePage } from "./SchedulePage";
 import { LookPage } from "./LookPage";
@@ -154,7 +155,8 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
             <View style={styles.pageHostInner}>
               {nav.route === "root" ? (
               <Animated.View key="root" entering={FadeIn.duration(140)} exiting={FadeOut.duration(90)} style={styles.page}>
-                <Text style={styles.rootSubtitle}>Everything is saved only when you tap Save.</Text>
+              <PageBody isWide={isWide}>
+                <Text style={[styles.rootSubtitle, { marginTop: tokens.spacing.md }]}>Everything is saved only when you tap Save.</Text>
                 {MENU.map((item) => {
                   const valueLabel =
                     item.route === "schedule"
@@ -206,6 +208,7 @@ export function SettingsFlow({ draft, deps, onDismiss, isWide }: Props) {
                   );
                 })}
                 <Text style={styles.versionText}>Period Timer {appVersion}</Text>
+              </PageBody>
               </Animated.View>
             ) : (
               <Animated.View
