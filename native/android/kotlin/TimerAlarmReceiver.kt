@@ -43,6 +43,9 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         // enough; clear any other stray alarm too.
         if (id != 0) EndAlertNotifier.cancel(context, id)
         EndAlertNotifier.cancelAllAlarms(context)
+        // The same period end also plays a tone from JS, which this action
+        // cannot reach. Leave a signal so the JS tick silences that player too.
+        SnapshotStore.setStopSignal(context)
     }
 
     /**

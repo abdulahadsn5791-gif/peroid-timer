@@ -20,6 +20,14 @@ export function useHomeViewModel(deps: AppDeps): HomeViewModelState {
     const refresh = () => setView(deps.getHomeView());
     const unsubDraft = deps.subscribeDraft(refresh);
     const timer = setInterval(async () => {
+      // A "Stop alarm" pressed on the notification can only cancel the native
+      // alarm, never the tone this app is playing, so apply it here too.
+      if (await deps.consumeStopSignal()) {
+        void deps.stopAlarm();
+        setFlash((f) => ({ ...f, alarmEnabled: false, periodName: null }));
+        refresh();
+        return;
+      }
       const result = await deps.checkPeriodEnd();
       if (result.justEnded) {
         // Read the toggles from the draft the flash is about to act on, so the

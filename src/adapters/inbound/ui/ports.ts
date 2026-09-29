@@ -26,6 +26,11 @@ export interface AppDeps {
   checkPeriodEnd(): Promise<PeriodEndTickResult>;
   /** Silences a currently-ringing end-of-period alarm. */
   stopAlarm(): Promise<void>;
+  /**
+   * True when "Stop alarm" was pressed on the notification since the last
+   * call, so the UI can silence the tone it is playing and drop the toast.
+   */
+  consumeStopSignal(): Promise<boolean>;
   onBackgroundTick(): void;
   runBootstrap(): Promise<void>;
 }

@@ -21,11 +21,9 @@ export class CheckForPeriodEndUseCase implements CheckForPeriodEndPort {
     const today = periodsFor(settings.weekSchedule, weekday);
     const event = periodJustEnded(today, now.secondsOfDay, settings.lastNotifiedKey, weekday);
     if (!event) return { justEnded: false, periodName: null };
-    // No tone is played here on purpose. The end-of-period sound is owned end to
-    // end by the native alarm channel, so it plays on the alarm stream and works
-    // with the app closed. Playing a second copy from JS meant two overlapping
-    // tones, and the notification's "Stop alarm" action could only cancel the
-    // native one, leaving the JS tone ringing with no way to silence it.
+    if (settings.soundEnabled && settings.notificationsEnabled) {
+      await this.sound.playEndSound();
+    }
     this.settingsRepository.save({ ...settings, lastNotifiedKey: event.notifyKey });
     return { justEnded: true, periodName: event.periodName };
   }

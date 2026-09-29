@@ -58,6 +58,17 @@ class PeriodTimerSchedulerModule(
         return true
     }
 
+    /**
+     * Consumes a "Stop alarm" pressed from the notification action, which
+     * cannot reach the JS audio player. Returns the timestamp of the pending
+     * stop, or 0 when there is none. The signal is cleared on read, so the JS
+     * side silences its player exactly once per stop.
+     */
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun consumeAlarmStopSignal(): Double {
+        return SnapshotStore.consumeStopSignal(reactApplicationContext).toDouble()
+    }
+
     /** Starts the foreground service that holds the live progress notification. */
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun startLive(): Boolean {

@@ -79,6 +79,7 @@ data class Lookup(
 object SnapshotStore {
     private const val NAME = "period-timer-snapshot.json"
     private const val LAST_NOTIFIED_NAME = "period-timer-last-notified.txt"
+    private const val STOP_SIGNAL_NAME = "period-timer-stop-signal.txt"
 
     fun load(context: Context): TimelineSnapshot? {
         val file = File(context.filesDir, NAME)
@@ -175,5 +176,36 @@ object SnapshotStore {
             return
         }
         file.writeText(key)
+    }
+
+    // --- "Stop alarm" pressed natively, waiting for JS to silence its player ---
+
+    /**
+     * The end-of-period tone is also played from JS (expo-audio, media stream),
+     * and the notification's "Stop alarm" action can only cancel the native
+     * alarm notification — it has no way to reach the JS player. So a native
+     * stop leaves a signal here, and the JS tick picks it up and silences its
+     * own player. Without this the notification button removed the
+     * notification while the tone rang on with no way to stop it.
+     */
+    fun setStopSignal(context: Context) {
+        try {
+            File(context.filesDir, STOP_SIGNAL_NAME).writeText(System.currentTimeMillis().toString())
+        } catch (e: Exception) {
+            // best effort: the native side is already silenced either way
+        }
+    }
+
+    /** Returns the pending stop signal and clears it, so it is handled once. */
+    fun consumeStopSignal(context: Context): Long {
+        val file = File(context.filesDir, STOP_SIGNAL_NAME)
+        if (!file.exists()) return 0L
+        val at = try {
+            file.readText().trim().toLong()
+        } catch (e: Exception) {
+            0L
+        }
+        file.delete()
+        return at
     }
 }

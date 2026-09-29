@@ -33,20 +33,23 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
   const pal = usePal();
   const dayPeriods = draft.periods;
-  // The open card is tracked by POSITION in the active day, not by id. Ids are
-  // only weekday-unique, and a legacy timetable can still carry two same-id
-  // periods on one day — selecting by id would open both rows and edit both.
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  // The open card is tracked by id, not by position. Ids are unique within a day
+  // (normalizeWeekSchedule re-ids legacy duplicates on load), and keying the
+  // list on them keeps a card mounted — a `${id}-${index}` key changed whenever
+  // the list was reordered, so React remounted the row and the list visibly
+  // shifted under the tap.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [timeField, setTimeField] = useState<"start" | "end" | null>(null);
 
   // Switching day collapses any open editor — it must not leak across days.
   useEffect(() => {
-    setExpandedIndex(null);
+    setExpandedId(null);
     setTimeField(null);
   }, [draft.weekday]);
 
-  // A reorder or removal moves the open card; keep it on the same lecture.
-  const expanded = expandedIndex === null ? null : (dayPeriods[expandedIndex] ?? null);
+  // A reorder or removal moves the open card, but it must stay on the same
+  // lecture, so it is resolved from the id rather than from a row number.
+  const expanded = expandedId === null ? null : (dayPeriods.find((p) => p.id === expandedId) ?? null);
 
   return (
     <PageScroll bottomInset={bottomInset}>
@@ -77,14 +80,14 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
         <View style={styles.periodList}>
           {dayPeriods.map((period, index) => (
             <PeriodCard
-              key={`${period.id}-${index}`}
+              key={period.id}
               period={period}
               index={index}
               accent={accent}
-              expanded={expandedIndex === index}
+              expanded={expandedId === period.id}
               onToggleExpand={() => {
-                const opening = expandedIndex !== index;
-                setExpandedIndex(opening ? index : null);
+                const opening = expandedId !== period.id;
+                setExpandedId(opening ? period.id : null);
                 setTimeField(null);
               }}
               onNameChange={(name) => actions.updatePeriod(period.id, { name })}
@@ -95,8 +98,8 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
               onMoveUp={() => actions.moveUp(index)}
               onMoveDown={() => actions.moveDown(index)}
               onRemove={() => {
-                if (expandedIndex === index) {
-                  setExpandedIndex(null);
+                if (expandedId === period.id) {
+                  setExpandedId(null);
                   setTimeField(null);
                 }
                 actions.remove(index);
@@ -133,7 +136,7 @@ export function SchedulePage({ draft, actions, isWide, bottomInset }: Props) {
         <DashedAddButton
           label="+ Add period"
           onPress={() => {
-            setExpandedIndex(null);
+            setExpandedId(null);
             setTimeField(null);
             actions.addPeriod();
           }}

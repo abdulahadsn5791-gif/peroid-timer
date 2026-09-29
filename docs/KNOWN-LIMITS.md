@@ -38,16 +38,23 @@ Honest scope so nobody discovers these the hard way.
   ignores a new ringtone passed to an existing channel, so the channel is
   deleted and recreated whenever the chosen ringtone no longer matches, which is
   what makes a changed selection take effect.
-- The tone is played by the native alarm channel **only**. An earlier build also
-  played a copy from JS (expo-audio), which meant two overlapping tones and one
-  that nobody could stop: the notification's "Stop alarm" action can only cancel
-  the native one, so the JS tone rang on with no way to silence it. JS detects
-  the period end for the in-app flash and nothing else.
+- The chosen ringtone is **verified to open** before it is given to the channel.
+  The snapshot carries the JS-side copy of the file, and a URI that no longer
+  resolves (file cleared, or a scoped `content://` the notification manager
+  cannot read) used to be handed straight to the channel, which posted a
+  notification with **no sound at all**. An unplayable URI now falls back to the
+  platform alarm tone, and if even that is missing the bundled
+  `res/raw/period_end.wav` is used, so the channel is never silent.
+- A period end can play from two sources: the native alarm channel (always) and
+  expo-audio from JS (only while the app is alive), which is what follows media
+  volume. The native channel is the one that still rings with the app closed.
 - **Stopping it** takes two routes: a "Stop alarm" action on the notification
   and a matching button in the app's end-of-period toast. Cancelling the
-  notification is what silences the channel sound, and because that is the only
-  source, either button stops the alarm completely. Stopping one alarm never
-  disables the schedule; the next period end still fires.
+  notification silences the channel sound, but the notification action cannot
+  reach the expo-audio player, so the native side drops a stop signal that the
+  JS tick consumes and applies. Without that bridge the notification button
+  removed the notification while the JS tone rang on with no way to stop it.
+  Stopping one alarm never disables the schedule; the next period end fires.
 
 ## The two alert toggles are independent
 - **Period-end notifications** off: nothing is posted at a period end, and any

@@ -43,7 +43,7 @@ object EndAlertNotifier {
      */
     fun applyChannelSound(context: Context, alarmSoundUri: String?) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val uri = resolveAlarmUri(alarmSoundUri)
+        val uri = resolveAlarmUri(context, alarmSoundUri)
 
         // Android only honours the sound a channel is FIRST created with; a later
         // createNotificationChannel with a different ringtone is silently ignored.
@@ -175,14 +175,27 @@ object EndAlertNotifier {
         }
     }
 
-    private fun resolveAlarmUri(alarmSoundUri: String?): android.net.Uri {
+    private fun resolveAlarmUri(context: Context, alarmSoundUri: String?): android.net.Uri {
         if (!alarmSoundUri.isNullOrBlank()) {
-            runCatching { android.net.Uri.parse(alarmSoundUri) }
-                .getOrNull()
-                ?.takeIf { it.scheme != null }
-                ?.let { return it }
+            val parsed = runCatching { android.net.Uri.parse(alarmSoundUri) }.getOrNull()
+            // The snapshot carries the JS-side copy of the chosen ringtone. If
+            // that URI no longer opens (file cleared, or a scoped content:// the
+            // notification manager cannot read) the channel would be handed an
+            // unplayable sound and the alarm would post NOTIFICATION, NO SOUND.
+            // So prove it opens before trusting it.
+            if (parsed != null && parsed.scheme != null && opens(context, parsed)) return parsed
         }
+        // Platform alarm tone, and the bundled end-of-period beep as the last
+        // resort so the channel is never silent (getDefaultUri is null on some
+        // devices and profiles that have no alarm ringtone).
         return RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: android.net.Uri.parse("android.resource://${context.packageName}/${R.raw.period_end}")
+    }
+
+    private fun opens(context: Context, uri: android.net.Uri): Boolean = try {
+        context.contentResolver.openInputStream(uri)?.use { it.read() >= 0 } ?: false
+    } catch (e: Exception) {
+        false
     }
 
     private fun format(sec: Long): String {
