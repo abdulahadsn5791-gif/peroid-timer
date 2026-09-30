@@ -5,6 +5,12 @@ import {
   type AppTheme,
   type Settings,
 } from "@domain/entities/Settings";
+import {
+  normalizeOptionalHex,
+  withSwatch,
+  type CustomRingColors,
+  type HexColor,
+} from "@domain/value-objects/CustomColors";
 import { clonePeriod, createPeriod, type Period } from "@domain/entities/Period";
 import {
   cloneWeekSchedule,
@@ -28,6 +34,9 @@ import { normalizeAccentColor } from "@domain/value-objects/AccentColor";
 export interface DraftSnapshot {
   accentColor: string;
   paletteIndex: number;
+  customRingColors: CustomRingColors;
+  homeBgColor: HexColor | null;
+  savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130. */
   ringSizeScale: number;
   soundEnabled: boolean;
@@ -70,6 +79,9 @@ export class SettingsDraftStore {
     return {
       accentColor: s.accentColor,
       paletteIndex: s.paletteIndex,
+      customRingColors: { ...s.customRingColors },
+      homeBgColor: s.homeBgColor,
+      savedSwatches: [...s.savedSwatches],
       ringSizeScale: s.ringSizeScale,
       soundEnabled: s.soundEnabled,
       notificationsEnabled: s.notificationsEnabled,
@@ -143,6 +155,8 @@ export class SettingsDraftStore {
   effectiveOverrides(): {
     accentColor: string;
     paletteIndex: number;
+    customRingColors: CustomRingColors;
+    homeBgColor: HexColor | null;
     ringSizeScale: number;
     colorClock: boolean;
     colorActiveBars: boolean;
@@ -155,6 +169,8 @@ export class SettingsDraftStore {
     return {
       accentColor: this.draft.accentColor,
       paletteIndex: this.draft.paletteIndex,
+      customRingColors: { ...this.draft.customRingColors },
+      homeBgColor: this.draft.homeBgColor,
       ringSizeScale: this.draft.ringSizeScale,
       colorClock: this.draft.colorClock,
       colorActiveBars: this.draft.colorActiveBars,
@@ -175,6 +191,31 @@ export class SettingsDraftStore {
 
   setPalette(index: number): void {
     this.draft.paletteIndex = index;
+    this.dirty = true;
+    this.notify();
+  }
+
+  setRingPhaseColor(phase: 0 | 1 | 2, hex: string | null): void {
+    const key = ("phase" + phase) as keyof CustomRingColors;
+    this.draft.customRingColors = {
+      ...this.draft.customRingColors,
+      [key]: normalizeOptionalHex(hex),
+    };
+    this.dirty = true;
+    this.notify();
+  }
+
+  setHomeBgColor(hex: string | null): void {
+    this.draft.homeBgColor = normalizeOptionalHex(hex);
+    this.dirty = true;
+    this.notify();
+  }
+
+  /** Records a picked color in the swatch list (deduped) and notifies. */
+  saveSwatch(hex: string): void {
+    const normalized = normalizeOptionalHex(hex);
+    if (!normalized) return;
+    this.draft.savedSwatches = withSwatch(this.draft.savedSwatches, normalized);
     this.dirty = true;
     this.notify();
   }

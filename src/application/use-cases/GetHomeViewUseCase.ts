@@ -1,4 +1,5 @@
 import { normalizeSettings } from "@domain/entities/Settings";
+import { resolvePhaseColors } from "@domain/value-objects/CustomColors";
 import type { Period } from "@domain/entities/Period";
 import { periodsFor } from "@domain/entities/WeekSchedule";
 import { computeStatus } from "@domain/services/computeStatus";
@@ -32,6 +33,12 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
     const settings = overrides ? { ...committed, ...overrides } : committed;
 
     const palette: RingPalette = paletteAt(settings.paletteIndex);
+    // Custom per-phase overrides win over the palette; the palette still
+    // answers any phase the overrides leave open.
+    const paletteWithCustom: RingPalette = {
+      ...palette,
+      colors: resolvePhaseColors(settings.paletteIndex, settings.customRingColors),
+    };
     const now = this.clock.now();
     const weekday = this.clock.todayParts().weekday;
     const seconds = now.secondsOfDay;
@@ -71,7 +78,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       const total = Math.max(1, endSec - startSec);
       const remainingFraction = Math.max(0, Math.min(1, remaining / total));
       const phase = phaseFor(remainingFraction);
-      const hex = phaseColor(palette, phase);
+      const hex = phaseColor(paletteWithCustom, phase);
       const duration = formatDuration(remaining);
 
       ring = {
@@ -80,7 +87,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         statusText: `Ends at ${periodEndLabel(p)}`,
         showHours: duration.hasHours,
         ringHex: hex,
-        clockHex: clockColor(palette, phase, settings.colorClock),
+        clockHex: clockColor(paletteWithCustom, phase, settings.colorClock),
         progressElapsed: 1 - remainingFraction,
         indicator: "active",
         teacher: p.teacher ?? null,
@@ -90,7 +97,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextName: today[currentIdx + 1]?.name ?? null,
       };
 
-      rows = this.buildRows(today, minutes, palette, (id) =>
+      rows = this.buildRows(today, minutes, paletteWithCustom, (id) =>
         id === p.id
           ? {
               countdownText: duration.text,
@@ -108,7 +115,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextIdx > 0 ? today[nextIdx - 1].end.minutes * 60 : startSec - 1800;
       const span = Math.max(60, startSec - prevEndSec);
       const remainingFraction = Math.max(0, Math.min(1, untilStart / span));
-      const phaseZero = hex0(palette);
+      const phaseZero = hex0(paletteWithCustom);
       const untilText = formatDurationWithUnits(untilStart);
 
       ring = {
@@ -120,7 +127,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         statusText: `starts at ${periodStartLabel(np)}`,
         showHours: true,
         ringHex: phaseZero,
-        clockHex: clockColor(palette, 0 as const, settings.colorClock),
+        clockHex: clockColor(paletteWithCustom, 0 as const, settings.colorClock),
         progressElapsed: 1 - remainingFraction,
         indicator: "between",
         teacher: null,
@@ -130,7 +137,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextName: np.name,
       };
 
-      rows = this.buildRows(today, minutes, palette, () => null);
+      rows = this.buildRows(today, minutes, paletteWithCustom, () => null);
     } else {
       ring = {
         periodName: "All periods complete",
@@ -147,7 +154,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextRoom: null,
         nextName: null,
       };
-      rows = this.buildRows(today, minutes, palette, () => null);
+      rows = this.buildRows(today, minutes, paletteWithCustom, () => null);
     }
 
     return {
@@ -155,6 +162,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       weekday,
       isEmptyDay: today.length === 0,
       ringSizeScale: settings.ringSizeScale,
+      homeBgColor: overrides ? overrides.homeBgColor : settings.homeBgColor,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
       theme: settings.theme,

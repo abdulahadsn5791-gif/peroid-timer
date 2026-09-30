@@ -25,7 +25,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
   const { width, height } = useWindowDimensions();
   const isWide = width >= 768;
   const { isOpen, openSheet, closeSheet } = useSettingsOpenState();
-  const { view, flash, stopAlarm } = useHomeViewModel(deps);
+  const { view, flash } = useHomeViewModel(deps);
   const draft = useSettingsDraft(deps);
 
   /**
@@ -69,15 +69,12 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
       style={[
         styles.screen,
         {
-          // No wallpaper + light theme = the clean white look (surface-1), per
-          // DESIGN-RULES §1.1. The old #F3F4F6 canvas sat noticeably darker
-          // than the pure-white cards floating on it, so the home screen read
-          // "gray" — the exact complaint a white theme is meant to avoid.
+          // Background precedence: wallpaper photo > user-picked flat color
+          // (no-wallpaper mode only) > theme default (white/black). The old
+          // code ignored the user's color choice entirely.
           backgroundColor: view.hasWallpaper
             ? "#000"
-            : view.theme === "dark"
-              ? "#000000"
-              : tokens.color.surface1,
+            : view.homeBgColor ?? (view.theme === "dark" ? "#000000" : tokens.color.surface1),
         },
       ]}
     >
@@ -163,8 +160,6 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
         active={flash.key > 0 && flash.periodName !== null}
         periodName={flash.periodName}
         flashKey={flash.key}
-        alarmEnabled={flash.alarmEnabled}
-        onStopAlarm={stopAlarm}
       />
 
       {/* Full-screen opaque settings — no blur, so it never interacts with

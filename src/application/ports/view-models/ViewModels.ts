@@ -1,4 +1,5 @@
 import type { PhaseIndex } from "@domain/value-objects/PhaseColor";
+import type { CustomRingColors, HexColor } from "@domain/value-objects/CustomColors";
 import type { AppTheme } from "@domain/entities/Settings";
 
 export type RowStatus = "passed" | "current" | "upcoming";
@@ -47,6 +48,8 @@ export interface HomeView {
   isEmptyDay: boolean;
   /** Clock ring size as a percent of the layout default: 60..130, 100 = auto. */
   ringSizeScale: number;
+  /** Flat home background when no wallpaper photo is set; null = theme default. */
+  homeBgColor: HexColor | null;
   hasWallpaper: boolean;
   wallpaperUri: string | null;
   wallpaperBlur: number;
@@ -73,6 +76,12 @@ export interface PeriodDraftVM {
 export interface SettingsDraftVM {
   accentColor: string;
   paletteIndex: number;
+  /** Per-phase ring color overrides; null = use the selected palette. */
+  customRingColors: CustomRingColors;
+  /** Flat home background when no wallpaper is set; null = theme default. */
+  homeBgColor: HexColor | null;
+  /** User-saved swatches, newest first. */
+  savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130. */
   ringSizeScale: number;
   soundEnabled: boolean;

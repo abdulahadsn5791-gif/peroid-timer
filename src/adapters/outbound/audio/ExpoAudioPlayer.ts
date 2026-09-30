@@ -10,10 +10,7 @@ const BUILTIN_TONE = require("../../../../assets/period-end.wav");
  * In a real build the sound is owned by the NATIVE alarm end to end: the exact
  * alarm and the foreground service both watch for a period end, post a heads-up
  * on the `period-timer-alarm` channel (USAGE_ALARM, so it follows the alarm
- * volume) and stop when that notification is cancelled. That single source is
- * what makes "Stop alarm" work from both the notification and the in-app toast —
- * a second, JS-only copy is unreachable from the notification shade, so it kept
- * ringing after the user had stopped the alarm.
+ * volume). The user silences the tone with the volume buttons.
  *
  * There is one deliberate exception, and it exists because a native alarm is
  * delivered AS a notification: when the OS blocks notifications (Android 13+
@@ -115,6 +112,10 @@ export class ExpoAudioPlayer implements SoundPort {
     }
   }
 
+  /**
+   * Silences the JS fallback player. The native alarm is silenced by the
+   * user with the volume buttons — there is no stop signal anymore.
+   */
   async stopEndSound(): Promise<void> {
     for (const player of [this.customPlayer, this.builtin()]) {
       if (!player) continue;
@@ -124,23 +125,6 @@ export class ExpoAudioPlayer implements SoundPort {
       } catch {
         // player already released
       }
-    }
-    // The loud alarm lives natively; cancelling its notification is the stop.
-    try {
-      NativeModules.PeriodTimerScheduler?.stopAlarm();
-    } catch {
-      // native module unavailable (iOS / not prebuilt) — nothing else to stop
-    }
-  }
-
-  async consumeStopSignal(): Promise<boolean> {
-    // A stop pressed on the notification reaches the native alarm directly; the
-    // signal is here so the in-app toast can drop itself too, even though the
-    // alarm itself is already silent by then.
-    try {
-      return (NativeModules.PeriodTimerScheduler?.consumeAlarmStopSignal?.() ?? 0) > 0;
-    } catch {
-      return false;
     }
   }
 

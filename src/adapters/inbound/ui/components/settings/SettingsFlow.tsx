@@ -113,7 +113,7 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
     });
   };
 
-  const pageProps = { draft, actions, isWide, bottomInset: SAVE_BAR_HEIGHT + insets.bottom + 12 };
+  const pageProps = { draft, actions, isWide, bottomInset: 24 };
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: pal.canvas }]} pointerEvents="box-none">
@@ -165,7 +165,7 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
               {nav.route === "root" ? (
               <Animated.View key="root" entering={FadeIn.duration(140)} exiting={FadeOut.duration(90)} style={styles.page}>
               <PageBody isWide={isWide}>
-                <Text style={[styles.rootSubtitle, { marginTop: tokens.spacing.md, color: pal.textTertiary }]}>Everything is saved only when you tap Save.</Text>
+                <Text style={[styles.rootSubtitle, { marginTop: tokens.spacing.md, color: pal.textTertiary }]}>Changes save when you tap Save — now in the header of each page.</Text>
                 {MENU.map((item) => {
                   const valueLabel =
                     item.route === "schedule"
@@ -233,34 +233,11 @@ function SettingsFlowInner({ draft, deps, onDismiss, isWide }: Omit<Props, never
             )}
             </View>
           </KeyboardAvoidingView>
-
-          {/* Pinned save bar — always reachable, no scrolling needed. */}
-          <View
-            style={[
-              styles.saveBar,
-              draft.theme === "dark" && styles.saveBarDark,
-              { paddingBottom: insets.bottom + 10, borderTopColor: pal.hairline },
-            ]}
-          >
-            <PressableScale
-              onPress={saveAndClose}
-              haptic="medium"
-              style={[styles.saveBtn, { backgroundColor: accent }]}
-              accessibilityRole="button"
-            >
-              <Text style={styles.saveText}>Save &amp; apply</Text>
-            </PressableScale>
-            <Text style={[styles.dirtyNote, draft.theme === "dark" && styles.dirtyNoteDark]}>
-              {draft.dirty ? "Unsaved changes" : "All changes saved"}
-            </Text>
-          </View>
         </View>
       </Animated.View>
     </View>
   );
 }
-
-const SAVE_BAR_HEIGHT = 92;
 
 const styles = StyleSheet.create({
   overlay: {
@@ -386,28 +363,4 @@ const styles = StyleSheet.create({
     color: tokens.color.text.tertiary,
   },
   versionTextDark: { color: "rgba(255,255,255,0.42)" },
-  saveBar: {
-    paddingHorizontal: tokens.spacing.xl,
-    paddingTop: tokens.spacing.md,
-    gap: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    backgroundColor: "transparent",
-  },
-  saveBarDark: {},
-  saveBtn: {
-    minHeight: tokens.tap,
-    borderRadius: tokens.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveText: {
-    color: tokens.color.white,
-    fontSize: tokens.text.body,
-    fontWeight: "600",
-  },
-  dirtyNote: {
-    textAlign: "center",
-    fontSize: tokens.text.micro,
-  },
-  dirtyNoteDark: { color: "rgba(235,235,245,0.30)" },
 });

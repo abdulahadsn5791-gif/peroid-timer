@@ -4,17 +4,16 @@ import type { AppDeps } from "../ports";
 
 export interface HomeViewModelState {
   view: HomeView;
-  flash: { periodName: string | null; key: number; alarmEnabled: boolean };
-  stopAlarm: () => void;
+  /** Informational "X ended" toast; no stop control — volume buttons silence the alarm. */
+  flash: { periodName: string | null; key: number };
 }
 
 export function useHomeViewModel(deps: AppDeps): HomeViewModelState {
   const [view, setView] = useState<HomeView>(() => deps.getHomeView());
-  const [flash, setFlash] = useState<{
-    periodName: string | null;
-    key: number;
-    alarmEnabled: boolean;
-  }>({ periodName: null, key: 0, alarmEnabled: true });
+  const [flash, setFlash] = useState<{ periodName: string | null; key: number }>({
+    periodName: null,
+    key: 0,
+  });
 
   useEffect(() => {
     const refresh = () => setView(deps.getHomeView());
@@ -27,27 +26,16 @@ export function useHomeViewModel(deps: AppDeps): HomeViewModelState {
       if (ticking) return;
       ticking = true;
       try {
-        // A "Stop alarm" pressed on the notification silences the alarm natively
-        // and leaves this signal, so the in-app toast can drop itself too.
-        if (await deps.consumeStopSignal()) {
-          void deps.stopAlarm();
-          setFlash((f) => ({ ...f, alarmEnabled: false, periodName: null }));
-          refresh();
-          return;
-        }
         const result = await deps.checkPeriodEnd();
         if (result.justEnded) {
-          // Read the toggles from the draft the flash is about to act on, so the
-          // "Stop alarm" control only shows when there is actually a tone to stop.
-          const draft = deps.settingsIsOpen() ? deps.getDraft() : null;
-          const alarmEnabled = draft ? draft.soundEnabled && draft.notificationsEnabled : true;
-          setFlash((f) => ({ periodName: result.periodName, key: f.key + 1, alarmEnabled }));
+          setFlash((f) => ({ periodName: result.periodName, key: f.key + 1 }));
         }
         refresh();
       } finally {
         ticking = false;
       }
     }, 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     deps.onBackgroundTick();
     return () => {
       unsubDraft();
@@ -55,12 +43,15 @@ export function useHomeViewModel(deps: AppDeps): HomeViewModelState {
     };
   }, [deps]);
 
-  const stopAlarm = useCallback(() => {
-    void deps.stopAlarm();
-    setFlash((f) => ({ ...f, alarmEnabled: false, periodName: null }));
-  }, [deps]);
+  // The toast auto-drops after a moment: it carries no control, so it must
+  // never linger over the clock waiting for a tap that cannot come.
+  useEffect(() => {
+    if (!flash.periodName) return;
+    const t = setTimeout(() => setFlash({ periodName: null, key: flash.key }), 4000);
+    return () => clearTimeout(t);
+  }, [flash.periodName, flash.key]);
 
-  return { view, flash, stopAlarm };
+  return { view, flash };
 }
 
 export function useSettingsDraft(deps: AppDeps): SettingsDraftVM | null {

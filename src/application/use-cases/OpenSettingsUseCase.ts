@@ -30,6 +30,9 @@ export function draftVmFromStore(
   return {
     accentColor: draft.accentColor,
     paletteIndex: draft.paletteIndex,
+    customRingColors: draft.customRingColors,
+    homeBgColor: draft.homeBgColor,
+    savedSwatches: draft.savedSwatches,
     ringSizeScale: draft.ringSizeScale,
     soundEnabled: draft.soundEnabled,
     notificationsEnabled: draft.notificationsEnabled,

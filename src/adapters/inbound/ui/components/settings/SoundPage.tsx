@@ -50,8 +50,8 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           </View>
         </Card>
         <Hint>
-          The alarm follows the alarm volume slider on your phone. A “Stop alarm” button appears in
-          the app whenever it rings.
+          The alarm follows the alarm volume slider on your phone — press a volume button while it
+          rings to silence it instantly.
         </Hint>
 
         <SectionHeader title="Alarm ringtone" subtitle="Used by the end-of-period alarm" />

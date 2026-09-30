@@ -12,6 +12,7 @@ import {
   BlurSlider,
   Card,
   CardRow,
+  ExpandableRow,
   Hint,
   PageBody,
   PageScroll,
@@ -20,7 +21,9 @@ import {
   ToggleRow,
   WallpaperPreview,
 } from "./primitives";
+import { ColorPicker } from "./ColorPicker";
 import { RING_SIZE_MAX, RING_SIZE_MIN } from "@domain/entities/Settings";
+import type { HexColor } from "@domain/value-objects/CustomColors";
 
 interface Props {
   draft: SettingsDraftVM;
@@ -29,11 +32,17 @@ interface Props {
   bottomInset: number;
 }
 
-/** Wallpaper, accent color, ring palettes and the "what gets colored" toggles. */
+type ExpandKey = "ring0" | "ring1" | "ring2" | "bg" | null;
+
+/** Wallpaper, accent color, ring colors, home background and the toggles. */
 export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
   const pal = usePal();
   const [customHex, setCustomHex] = useState(draft.accentColor);
+  const [expanded, setExpanded] = useState<ExpandKey>(null);
+
+  const toggle = (key: Exclude<ExpandKey, null>) =>
+    setExpanded((cur) => (cur === key ? null : key));
 
   return (
     <PageScroll bottomInset={bottomInset}>
@@ -81,6 +90,34 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           </Text>
         </Card>
 
+        <SectionHeader
+          title="Home background color"
+          subtitle="Flat color behind the home screen when no wallpaper is set"
+        />
+        <Card>
+          <ExpandableRow
+            title="Pick a background color"
+            subtitle={draft.homeBgColor ?? "Theme default (white or black)"}
+            swatch={draft.homeBgColor}
+            expanded={expanded === "bg"}
+            onToggle={() => toggle("bg")}
+          >
+            <ColorPicker
+              value={draft.homeBgColor}
+              accent={accent}
+              savedSwatches={draft.savedSwatches}
+              onSaveSwatch={(hex) => actions.saveSwatch(hex)}
+              onPick={(hex) => actions.previewHomeBgColor(hex)}
+              onClear={() => actions.previewHomeBgColor(null)}
+              clearLabel="Theme default"
+            />
+            <Hint>
+              Applies only while no wallpaper photo is set — choosing a photo replaces the flat
+              color. Deep colors like #111827 pair best with the light theme's white cards.
+            </Hint>
+          </ExpandableRow>
+        </Card>
+
         <SectionHeader title="App background" subtitle="Wallpaper behind the home screen only" />
         <Card>
           <View style={styles.backgroundRow}>
@@ -94,7 +131,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           <View style={styles.btnRow}>
             <PressableScale
               onPress={() => void actions.pickWallpaper()}
- haptic="light"
+              haptic="light"
               style={[styles.halfBtn, { backgroundColor: pal.inputBg }, styles.btnFlex]}
               accessibilityRole="button"
             >
@@ -105,10 +142,10 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
               haptic="selection"
               style={[styles.halfBtn, { backgroundColor: pal.inputBg }, styles.btnFlex]}
               accessibilityRole="button"
-            >                  <Text style={[styles.halfBtnText, { color: pal.danger }]}>Remove</Text>
+            >
+              <Text style={[styles.halfBtnText, { color: pal.danger }]}>Remove</Text>
             </PressableScale>
           </View>
-
         </Card>
         <Hint>Shown only behind the app home screen — it never touches your phone&apos;s wallpaper.</Hint>
 
@@ -150,35 +187,43 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           </View>
         </Card>
 
-        <SectionHeader title="Ring colors" subtitle="How the timer ring changes as time runs out" />
-        <Card style={styles.looseCard}>
-          <View style={styles.paletteGrid}>
-            {RING_PALETTES.map((palette, index) => {
-              const selected = index === draft.paletteIndex;
-              return (
-                <PressableScale
-                  key={palette.id}
-                  onPress={() => actions.previewPalette(index)}
-                  haptic="selection"
-                  style={[styles.paletteCard, basePaletteStyle(accent, selected, pal.hairlineStrong)].filter(Boolean) as ViewStyle[]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                >
-                  <Text style={[styles.paletteName, { color: pal.textPrimary }]}>{palette.name}</Text>
-                  <View style={styles.paletteDots}>
-                    {palette.colors.map((c) => (
-                      <View
-                        key={c}
-                        style={[styles.paletteDot, { backgroundColor: c, borderColor: pal.hairline }]}
-                      />
-                    ))}
-                  </View>
-                </PressableScale>
-              );
-            })}
-          </View>
+        <SectionHeader
+          title="Ring colors"
+          subtitle="Custom color for each phase — leave closed to use the selected palette"
+        />
+        <Card>
+          {([0, 1, 2] as const).map((phase, idx) => {
+            const titles = ["Color 1 — most time left", "Color 2 — under 30% left", "Color 3 — last 15%"];
+            const paletteDefault = RING_PALETTES[draft.paletteIndex]?.colors[phase] ?? "#2563EB";
+            const phaseKey = `phase${phase}` as "phase0" | "phase1" | "phase2";
+            const current = draft.customRingColors[phaseKey] ?? null;
+            const expandedKey = `ring${phase}` as "ring0" | "ring1" | "ring2";
+            return (
+              <ExpandableRow
+                key={phase}
+                title={titles[idx]}
+                subtitle={current ? `custom ${current}` : `palette ${paletteDefault}`}
+                swatch={current ?? paletteDefault}
+                expanded={expanded === expandedKey}
+                onToggle={() => toggle(expandedKey)}
+              >
+                <ColorPicker
+                  value={current}
+                  accent={accent}
+                  savedSwatches={draft.savedSwatches}
+                  onSaveSwatch={(hex) => actions.saveSwatch(hex)}
+                  onPick={(hex: HexColor) => actions.previewRingPhaseColor(phase, hex)}
+                  onClear={() => actions.previewRingPhaseColor(phase, null)}
+                  clearLabel="Use palette"
+                />
+              </ExpandableRow>
+            );
+          })}
         </Card>
-        <Hint>Color 1 until 30% left · color 2 until 15% · color 3 in the last 15%.</Hint>
+        <Hint>
+          Your custom colors replace the palette per phase; phases you leave on \"Use palette\"
+          follow the selected palette above. Every picked color is saved to your swatches.
+        </Hint>
 
         <SectionHeader title="Colored elements" subtitle="Choose what the accent reaches" />
         <Card>
@@ -209,16 +254,6 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
       </PageBody>
     </PageScroll>
   );
-}
-
-function basePaletteStyle(accent: string, selected: boolean, fallbackBorder: string): ViewStyle | undefined {
-  if (selected) {
-    return {
-      borderColor: accent,
-      borderWidth: 1.5,
-    };
-  }
-  return { borderColor: fallbackBorder, borderWidth: 1 };
 }
 
 const styles = StyleSheet.create({
@@ -322,31 +357,5 @@ const styles = StyleSheet.create({
     color: tokens.color.text.primary,
     minWidth: 70,
     padding: 0,
-  },
-  paletteGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: tokens.spacing.sm,
-  },
-  paletteCard: {
-    flexGrow: 1,
-    flexBasis: "45%",
-    padding: tokens.spacing.md,
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-  },
-  // No `color` here: the name's color is always supplied by the active palette
-  // so it stays legible on both the white and the near-black settings surface.
-  paletteName: {
-    fontSize: tokens.text.subtext,
-    fontWeight: "500",
-    marginBottom: tokens.spacing.sm,
-  },
-  paletteDots: { flexDirection: "row", gap: 6 },
-  paletteDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
   },
 });

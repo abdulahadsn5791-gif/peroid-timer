@@ -24,13 +24,6 @@ export interface AppDeps {
   subscribeDraft(listener: () => void): () => void;
   settingsActions: SettingsActions;
   checkPeriodEnd(): Promise<PeriodEndTickResult>;
-  /** Silences a currently-ringing end-of-period alarm. */
-  stopAlarm(): Promise<void>;
-  /**
-   * True when "Stop alarm" was pressed on the notification since the last
-   * call, so the UI can silence the tone it is playing and drop the toast.
-   */
-  consumeStopSignal(): Promise<boolean>;
   onBackgroundTick(): void;
   runBootstrap(): Promise<void>;
 }
@@ -43,6 +36,12 @@ export interface SettingsActions {
   previewPalette(index: number): void;
   /** Live-updates the clock ring size (60–130% of the layout default). */
   previewRingSize(scale: number): void;
+  /** Sets/clears one phase's custom ring color (null = use the palette). */
+  previewRingPhaseColor(phase: 0 | 1 | 2, hex: string | null): void;
+  /** Sets/clears the flat home background used when no wallpaper is set. */
+  previewHomeBgColor(hex: string | null): void;
+  /** Records a picked color into the user's saved swatches. */
+  saveSwatch(hex: string): void;
   previewAccent(hex: string): void;
   previewColorClock(enabled: boolean): void;
   previewColorNotification(enabled: boolean): void;

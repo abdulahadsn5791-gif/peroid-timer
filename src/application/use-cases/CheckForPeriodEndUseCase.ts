@@ -36,7 +36,7 @@ export class CheckForPeriodEndUseCase implements CheckForPeriodEndPort {
     return { justEnded: true, periodName: event.periodName };
   }
 
-  /** Silences a ringing end-of-period alarm without touching the schedule. */
+  /** Silences the JS fallback tone (the native alarm follows the volume buttons). */
   async stop(): Promise<void> {
     await this.sound.stopEndSound();
   }

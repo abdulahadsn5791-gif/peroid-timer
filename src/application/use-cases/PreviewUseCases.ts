@@ -4,12 +4,15 @@ import type {
   PreviewColorClockPort,
   PreviewColorNotificationPort,
   PreviewColorActiveBarsPort,
+  PreviewHomeBgColorPort,
   PreviewNotificationsPort,
   PreviewPalettePort,
+  PreviewRingPhaseColorPort,
   PreviewRingSizePort,
   PreviewSoundPort,
   PreviewThemePort,
   PreviewWallpaperBlurPort,
+  SaveSwatchPort,
 } from "@application/ports/inbound/PreviewPorts";
 import type { WallpaperStorePort } from "@application/ports/outbound/WallpaperStorePort";
 import { SettingsDraftStore } from "@application/state/SettingsDraftStore";
@@ -41,6 +44,33 @@ export class PreviewRingSizeUseCase implements PreviewRingSizePort {
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
   preview(scale: number): SettingsDraftVM {
     this.draftStore.setRingSizeScale(scale);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates one phase's custom ring color (null = palette fallback). */
+export class PreviewRingPhaseColorUseCase implements PreviewRingPhaseColorPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(phase: 0 | 1 | 2, hex: string | null): SettingsDraftVM {
+    this.draftStore.setRingPhaseColor(phase, hex);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates the flat home background (no-wallpaper mode only). */
+export class PreviewHomeBgColorUseCase implements PreviewHomeBgColorPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(hex: string | null): SettingsDraftVM {
+    this.draftStore.setHomeBgColor(hex);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Records a picked color into the user's saved swatches. */
+export class SaveSwatchUseCase implements SaveSwatchPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  save(hex: string): SettingsDraftVM {
+    this.draftStore.saveSwatch(hex);
     return vm(this.draftStore, this.wallpaper);
   }
 }

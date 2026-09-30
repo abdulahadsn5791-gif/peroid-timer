@@ -7,6 +7,15 @@ import {
 } from "./WeekSchedule";
 import { DEFAULT_ACCENT, normalizeAccentColor, type AccentColor } from "../value-objects/AccentColor";
 import { paletteAt } from "../value-objects/RingPalette";
+import {
+  DEFAULT_CUSTOM_RING_COLORS,
+  normalizeCustomRingColors,
+  normalizeOptionalHex,
+  normalizeSavedSwatches,
+  STARTER_SWATCHES,
+  type CustomRingColors,
+  type HexColor,
+} from "../value-objects/CustomColors";
 
 export type AppTheme = "light" | "dark";
 
@@ -19,6 +28,16 @@ export interface Settings {
   weekSchedule: WeekSchedule;
   accentColor: AccentColor;
   paletteIndex: number;
+  /** Per-phase ring color overrides; null = use the selected palette's color. */
+  customRingColors: CustomRingColors;
+  /**
+   * Home background when no wallpaper photo is set ("none" = the default
+   * white/dark look). Ignored entirely when a wallpaper is set — a photo
+   * always replaces the flat color.
+   */
+  homeBgColor: HexColor | null;
+  /** Colors the user saved from the pickers, newest first. */
+  savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130, 100 = auto. */
   ringSizeScale: number;
   colorClock: boolean;
@@ -42,6 +61,9 @@ export interface SettingsShape {
   periods?: Period[];
   accentColor?: AccentColor;
   paletteIndex?: number;
+  customRingColors?: CustomRingColors;
+  homeBgColor?: HexColor | null;
+  savedSwatches?: HexColor[];
   ringSizeScale?: number;
   colorClock?: boolean;
   colorNotification?: boolean;
@@ -72,6 +94,9 @@ export function defaultSettings(): Settings {
     weekSchedule: defaultWeekSchedule(),
     accentColor: DEFAULT_ACCENT,
     paletteIndex: 0,
+    customRingColors: DEFAULT_CUSTOM_RING_COLORS,
+    homeBgColor: null,
+    savedSwatches: [...STARTER_SWATCHES],
     ringSizeScale: DEFAULT_RING_SIZE_SCALE,
     colorClock: false,
     colorNotification: false,
@@ -99,6 +124,12 @@ export function settingsWith(overrides: SettingsShape): Settings {
     weekSchedule,
     accentColor: normalizeAccentColor(overrides.accentColor ?? base.accentColor),
     paletteIndex: overrides.paletteIndex ?? base.paletteIndex,
+    customRingColors: normalizeCustomRingColors(overrides.customRingColors),
+    homeBgColor: normalizeOptionalHex(overrides.homeBgColor),
+    savedSwatches:
+      overrides.savedSwatches != null
+        ? normalizeSavedSwatches(overrides.savedSwatches)
+        : base.savedSwatches,
     ringSizeScale: clampRingSizeScale(overrides.ringSizeScale ?? base.ringSizeScale),
     colorClock: overrides.colorClock ?? base.colorClock,
     colorNotification: overrides.colorNotification ?? base.colorNotification,

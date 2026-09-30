@@ -70,6 +70,51 @@ export function Card({ children, style, pad }: { children: ReactNode; style?: Vi
   );
 }
 
+/** Expandable section: tap the header row to reveal `children`. */
+export function ExpandableRow({
+  title,
+  subtitle,
+  swatch,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  /** Current color chip shown at the right end of the row. */
+  swatch: string | null;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const pal = usePal();
+  return (
+    <View>
+      <PressableScale
+        onPress={onToggle}
+        haptic="selection"
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        style={styles.expandHead}
+      >
+        <View style={styles.rowTextWrap}>
+          <Text style={[styles.rowLabel, { color: pal.textPrimary }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.rowSublabel, { color: pal.textTertiary }]}>{subtitle}</Text> : null}
+        </View>
+        <View
+          style={[
+            styles.expandSwatch,
+            { backgroundColor: swatch ?? "transparent", borderColor: pal.hairlineStrong },
+          ]}
+        />
+        <Text style={[styles.expandChevron, { color: pal.textTertiary }]}>{expanded ? "▴" : "▾"}</Text>
+      </PressableScale>
+      {expanded ? <View style={styles.expandBody}>{children}</View> : null}
+      <View style={[styles.rowSeparator, { backgroundColor: pal.hairline }]} />
+    </View>
+  );
+}
+
 export function CardRow({ children }: { children: ReactNode }) {
   return <View style={styles.cardRow}>{children}</View>;
 }
@@ -749,6 +794,25 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: tokens.color.hairline,
     marginLeft: tokens.spacing.lg,
+  },
+  expandHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: tokens.spacing.md,
+    minHeight: tokens.tap,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.sm,
+  },
+  expandSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  expandChevron: { fontSize: tokens.text.micro, width: 14, textAlign: "center" },
+  expandBody: {
+    paddingHorizontal: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.md,
   },
   // Buttons
   ghostBtn: {

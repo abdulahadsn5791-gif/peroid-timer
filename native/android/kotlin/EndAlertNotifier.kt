@@ -166,28 +166,24 @@ object EndAlertNotifier {
                 ?: Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val stopIntent = PendingIntent.getBroadcast(
-            context,
-            id,
-            Intent(context, TimerAlarmReceiver::class.java)
-                .setAction(ACTION_STOP)
-                .putExtra(EXTRA_NOTIFICATION_ID, id),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
 
+        // NO "Stop alarm" action on the notification: the tone lives on the
+        // ALARM stream, so the volume buttons silence it instantly, and the
+        // notification auto-cancels when tapped. A stop action users never
+        // needed (volume down was always right there) only cluttered the
+        // shade — removed.
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_clock)
             .setContentTitle("⏰ ${ended.name} ended")
             .setContentText(if (next != null) "Up next: ${next.name} at ${next.startLabel}" else "All periods complete")
             .setStyle(NotificationCompat.BigTextStyle().bigText(lines.trimEnd()))
             .setContentIntent(contentIntent)
+            .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(true)
             .setColor(accent)
             .setColorized(true)
-            .addAction(R.drawable.ic_stat_clock, "Stop alarm", stopIntent)
 
         // The channel owns the audio on Android 8+, so the sound toggle decides the
         // CHANNEL, not just the builder: the ringing alarm channel when sound is

@@ -28,12 +28,15 @@ import {
   PreviewColorClockUseCase,
   PreviewColorNotificationUseCase,
   PreviewColorActiveBarsUseCase,
+  PreviewHomeBgColorUseCase,
   PreviewNotificationsUseCase,
   PreviewPaletteUseCase,
+  PreviewRingPhaseColorUseCase,
   PreviewRingSizeUseCase,
   PreviewSoundUseCase,
   PreviewThemeUseCase,
   PreviewWallpaperBlurUseCase,
+  SaveSwatchUseCase,
 } from "@application/use-cases/PreviewUseCases";
 import { DraftPeriodsUseCase } from "@application/use-cases/DraftPeriodsUseCase";
 import {
@@ -59,8 +62,6 @@ export class PeriodTimerApp implements AppDeps {
   readonly openSettings: () => void;
   readonly settingsActions: SettingsActions;
   readonly checkPeriodEnd: () => Promise<PeriodEndTickResult>;
-  readonly stopAlarm: () => Promise<void>;
-  readonly consumeStopSignal: () => Promise<boolean>;
 
   private readonly settingsIsOpenRef: () => boolean;
   private readonly getDraftRef: () => SettingsDraftVM;
@@ -71,6 +72,11 @@ export class PeriodTimerApp implements AppDeps {
   private refreshListeners = new Set<() => void>();
   private lastBoundary = 0;
   private lastSoundUri: string | null | undefined = undefined;
+  /** Bound in createApp; the committed toggles gate the Stop-alarm button. */
+  private readonly committedSettings: () => {
+    soundEnabled: boolean;
+    notificationsEnabled: boolean;
+  };
 
   constructor(deps: {
     getHomeView: () => HomeView;
@@ -80,8 +86,7 @@ export class PeriodTimerApp implements AppDeps {
     subscribeDraft: (listener: () => void) => () => void;
     settingsActions: SettingsActions;
     checkPeriodEnd: () => Promise<PeriodEndTickResult>;
-    stopAlarm: () => Promise<void>;
-    consumeStopSignal: () => Promise<boolean>;
+    getCommittedSettings: () => { soundEnabled: boolean; notificationsEnabled: boolean };
     clock: SystemClock;
     applyPlan: ApplyBackgroundPlanUseCase;
     audio: ExpoAudioPlayer;
@@ -93,8 +98,7 @@ export class PeriodTimerApp implements AppDeps {
     this.subscribeDraftRef = deps.subscribeDraft;
     this.settingsActions = deps.settingsActions;
     this.checkPeriodEnd = deps.checkPeriodEnd;
-    this.stopAlarm = deps.stopAlarm;
-    this.consumeStopSignal = deps.consumeStopSignal;
+    this.committedSettings = deps.getCommittedSettings;
     this.clock = deps.clock;
     this.applyPlan = deps.applyPlan;
     this.audio = deps.audio;
@@ -102,6 +106,11 @@ export class PeriodTimerApp implements AppDeps {
 
   settingsIsOpen(): boolean {
     return this.settingsIsOpenRef();
+  }
+
+  /** The saved toggles decide whether the alarm can ring at all. */
+  getCommittedSettings(): { soundEnabled: boolean; notificationsEnabled: boolean } {
+    return this.committedSettings();
   }
 
   getDraft(): SettingsDraftVM {
@@ -127,11 +136,9 @@ export class PeriodTimerApp implements AppDeps {
 
   async runBootstrap(): Promise<void> {
     registerNotificationResponseHandler(() => {
-      // Tapping any notification means "I'm here, stop it" — the same outcome as
-      // the alarm notification's own "Stop alarm" action. Without this, opening
-      // the app from the shade left the alarm ringing with the app in the
-      // foreground and no obvious way to end it.
-      void this.stopAlarm();
+      // Tapping the notification opens the app; the tone itself is on the
+      // ALARM stream, so the volume buttons (or the auto-cancel) end it. The
+      // tap only needs to refresh the home view.
       this.refreshHome();
     });
     await configureNotificationChannels();
@@ -163,6 +170,9 @@ export function createApp(): AppDeps {
   const openSettings = new OpenSettingsUseCase(settingsRepository, wallpaperStore, draftStore);
   const previewPalette = new PreviewPaletteUseCase(draftStore, wallpaperStore);
   const previewRingSize = new PreviewRingSizeUseCase(draftStore, wallpaperStore);
+  const previewRingPhaseColor = new PreviewRingPhaseColorUseCase(draftStore, wallpaperStore);
+  const previewHomeBgColor = new PreviewHomeBgColorUseCase(draftStore, wallpaperStore);
+  const saveSwatch = new SaveSwatchUseCase(draftStore, wallpaperStore);
   const previewAccent = new PreviewAccentUseCase(draftStore, wallpaperStore);
   const previewColorClock = new PreviewColorClockUseCase(draftStore, wallpaperStore);
   const previewColorNotification = new PreviewColorNotificationUseCase(draftStore, wallpaperStore);
@@ -194,6 +204,9 @@ export function createApp(): AppDeps {
   const settingsActions: SettingsActions = {
     previewPalette: (i) => void previewPalette.preview(i),
     previewRingSize: (scale) => void previewRingSize.preview(scale),
+    previewRingPhaseColor: (phase, hex) => void previewRingPhaseColor.preview(phase, hex),
+    previewHomeBgColor: (hex) => void previewHomeBgColor.preview(hex),
+    saveSwatch: (hex) => void saveSwatch.save(hex),
     previewAccent: (hex) => void previewAccent.preview(hex),
     previewColorClock: (b) => void previewColorClock.preview(b),
     previewColorNotification: (b) => void previewColorNotification.preview(b),
@@ -236,8 +249,12 @@ export function createApp(): AppDeps {
     subscribeDraft: (listener) => draftStore.subscribe(listener),
     settingsActions,
     checkPeriodEnd: () => checkPeriodEnd.tick(),
-    stopAlarm: () => checkPeriodEnd.stop(),
-    consumeStopSignal: () => sound.consumeStopSignal(),
+    // The committed (saved) toggles decide whether the alarm can ring —
+    // the toast auto-drops, and the volume buttons silence the tone.
+    getCommittedSettings: () => {
+      const s = settingsRepository.load();
+      return { soundEnabled: s.soundEnabled, notificationsEnabled: s.notificationsEnabled };
+    },
     clock,
     applyPlan,
     audio: sound,
