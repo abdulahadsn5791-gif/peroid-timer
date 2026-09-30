@@ -8,6 +8,14 @@ Light-theme, feel-like-your-own-OS design rules, the hexagonal architecture cont
 
 The app must feel like a system settings surface — as if you opened a native OS, not a webpage.
 
+A fresh install is the white look no matter what the phone's dark-mode switch says.
+`userInterfaceStyle: "light"` in `app.json` is a no-op without `expo-system-ui`
+(prebuild only prints "Install expo-system-ui to enable this feature"), so
+`withPeriodTimerAndroid` pins the native shell itself: `AppTheme`'s parent is
+`Theme.AppCompat.Light.NoActionBar` and `android:forceDarkAllowed` is false. The
+theme the user picks in Settings → Look is the app's own `theme` setting and
+drives the home screen and the settings pages on top of that.
+
 ### 1.1 Tokens
 | Token | Value | Use |
 |---|---|---|
@@ -98,7 +106,7 @@ scripts/                          (Bun-only dev scripts)
 | `SettingsRepositoryPort` | `load(): Settings` · `save(s: Settings): void` |
 | `ImagePickerPort` | `pickImage(): Promise<{ uri: string; width: number; height: number } \| null>` |
 | `WallpaperStorePort` | `getStoredUri(): string \| null` · `setPreviewImage(src): Promise<string \| null>` · `clearPreview(): void` · `commitPreview(): Promise<string \| null>` · `rollbackPreview(): void` · `removeStored(): Promise<void>` |
-| `SoundPort` | `prepare(): Promise<void>` · `playEndSound(): Promise<void>` · `stopEndSound(): Promise<void>` · `consumeStopSignal(): Promise<boolean>` |
+| `SoundPort` | `prepare(): Promise<void>` · `playEndSound(): Promise<void>` (only reached by builds with no native scheduler — the native alarm channel owns the sound) · `stopEndSound(): Promise<void>` · `consumeStopSignal(): Promise<boolean>` |
 | `AlertSchedulerPort` | `scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>` · `scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void>` · `startLiveNotification(): Promise<void>` · `stopLiveNotification(): Promise<void>` · `hasExactAlarmAccess(): Promise<boolean>` · `requestExactAlarmAccess(): Promise<boolean>` |
 | `SoundPickerPort` | `pickSound(): Promise<{ uri: string; name: string } \| null>` |
 | `LockScreenSnapshotPort` | `write(timeline: DayTimeline): Promise<void>` · `read(): DayTimeline \| null` |
@@ -126,7 +134,7 @@ Inbound ports are the use-case interfaces (`GetHomeView`, `OpenSettings`, `Previ
 ## 5. Live progress notification (always on, Android)
 1. **Ongoing notification (Google-Maps-style):** an ongoing public notification with a real **progress bar** (`setProgress`) shrinking as the period elapses, a system **chronometer** live countdown (`"Period 2 · ends in 24:37"`) on Android 7+ (static text before that), and BigText detail lines with the current and next period + start/end labels.
 2. It is delivered by a **foreground service** (`PeriodForegroundService`, 1 tick/sec while the screen is on, 5 sec when off) plus one exact alarm per schedule transition, so the countdown bar stays live in the shade while the app is closed.
-3. End-of-period **sound + notification** stays independent (driven by the sound toggle).
+3. End-of-period **sound + notification** stays independent (driven by the sound toggle). It rings from exactly one source — the native alarm channel — so every stop route (the notification's "Stop alarm" action, the in-app toast button, tapping a notification) can silence it. The same service also watches for the period end, which is what makes the alarm fire even without exact-alarm access.
 
 ---
 

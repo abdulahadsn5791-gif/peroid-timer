@@ -43,38 +43,25 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         // enough; clear any other stray alarm too.
         if (id != 0) EndAlertNotifier.cancel(context, id)
         EndAlertNotifier.cancelAllAlarms(context)
-        // The same period end also plays a tone from JS, which this action
-        // cannot reach. Leave a signal so the JS tick silences that player too.
+        // The app is usually still running with its end-of-period toast on
+        // screen, and this action cannot reach JS. Leave a signal so that tick
+        // drops the toast as well.
         SnapshotStore.setStopSignal(context)
     }
 
     /**
-     * The loud end-of-period alert. Deduped per weekday+period so a repeated
-     * delivery (inexact alarm retry) cannot ring twice; weekly presets rotate
-     * the weekday inside the key, so the same period rings again tomorrow.
+     * The loud end-of-period alert, on an exact alarm. The ringing decision,
+     * both toggles and the `weekday:periodId` dedupe all live in
+     * EndAlertNotifier.ringIfJustEnded, which the foreground service calls too —
+     * so whichever watcher gets there first rings and the other is a no-op, and
+     * a repeated delivery (inexact alarm retry, a service tick) can never ring
+     * twice. Weekly presets rotate the weekday inside the key, so the same
+     * period rings again tomorrow.
      */
     private fun onEndAlert(context: Context, snapshot: TimelineSnapshot, intent: Intent, now: Long) {
-        if (snapshot.segments.isEmpty()) return // empty preset day: never ring
-        // Both toggles are honoured independently: the notification toggle stops
-        // the alert entirely, the sound toggle stops just the ringtone.
-        if (!snapshot.soundEnabled && !snapshot.notificationsEnabled) return
-
         val segId = intent.getStringExtra(AlarmSchedulerCore.EXTRA_SEGMENT_ID) ?: return
         val ended = snapshot.segments.firstOrNull { it.id == segId } ?: return
-
-        val key = "${snapshot.weekday}:$segId"
-        if (SnapshotStore.lastNotifiedKey(context) == key) return
-        SnapshotStore.setLastNotifiedKey(context, key)
-
-        if (!snapshot.notificationsEnabled) {
-            // Silent day end: nothing posts, and any still-ringing alarm stops.
-            EndAlertNotifier.cancelAllAlarms(context)
-            return
-        }
-
-        val lookup = SnapshotStore.lookup(snapshot, now)
-        EndAlertNotifier.post(context, snapshot, ended, lookup.next, now)
-        TimerWidgetProvider.requestUpdate(context)
+        EndAlertNotifier.ringIfJustEnded(context, snapshot, ended, SnapshotStore.lookup(snapshot, now).next, now)
     }
 
     private fun onTransition(context: Context, snapshot: TimelineSnapshot, now: Long) {

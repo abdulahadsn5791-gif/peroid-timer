@@ -68,7 +68,12 @@ export function FlashLayer({ active, periodName, flashKey, alarmEnabled, onStopA
           style={[styles.toastWrap, { opacity: toastOpacity }]}
         >
           <View style={styles.toast}>
-            <BlurView intensity={48} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView
+              intensity={48}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={styles.toastText}>{periodName} ended</Text>
             {alarmEnabled ? (
               <Pressable
@@ -77,6 +82,7 @@ export function FlashLayer({ active, periodName, flashKey, alarmEnabled, onStopA
                   onStopAlarm();
                 }}
                 style={styles.stopBtn}
+                hitSlop={6}
                 accessibilityRole="button"
                 accessibilityLabel="Stop alarm"
               >
@@ -114,17 +120,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   stopBtn: {
-    marginTop: 4,
-    minHeight: 32,
-    paddingHorizontal: tokens.spacing.lg,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.45)",
+    marginTop: 6,
+    // 44px floor: the design rules' minimum tap target. A 32px control sitting
+    // on a translucent pill over a moving background is a miss waiting to
+    // happen, and a missed tap on the only in-app stop reads as a dead button.
+    minHeight: tokens.tap,
+    paddingHorizontal: tokens.spacing.xl,
+    borderRadius: tokens.radius.full,
+    backgroundColor: tokens.color.danger,
     alignItems: "center",
     justifyContent: "center",
   },
   stopText: {
-    color: "#fff",
+    color: tokens.color.white,
     fontSize: tokens.text.subtext,
     fontWeight: "600",
   },

@@ -27,17 +27,21 @@ Honest scope so nobody discovers these the hard way.
 - **Choose** a ringtone in Settings → Alarm sound (system audio picker). The
   file is copied into the app's documents directory, so the selection survives
   restarts and cache clears.
-- The alarm fires natively (exact alarm → notification on the alarm channel
-  with `USAGE_ALARM` audio), so it rings **even when the app is closed** and
-  on the lock screen. If the picked file is ever deleted by the system, the
-  platform default alarm sound plays instead — the alarm never goes silent.
+- The alarm fires natively, so it rings **even when the app is closed** and on
+  the lock screen. It has **two watchers**: one exact alarm per period end, and
+  the foreground service's own tick (1s screen-on / 5s screen-off). Whichever
+  gets there first rings; the shared `weekday:periodId` dedupe means a period can
+  never ring twice. The service is the one that saves you when exact-alarm
+  access was never granted, or the OEM throttled AlarmManager minutes late.
 - The ringtone follows the phone's **alarm volume** slider, not media volume.
-  The channel is republished with `USAGE_ALARM` attributes before each alert
-  because Android 8+ ignores a notification builder's `setSound` once the
-  channel exists — the channel's own sound is what actually plays. Android also
-  ignores a new ringtone passed to an existing channel, so the channel is
-  deleted and recreated whenever the chosen ringtone no longer matches, which is
-  what makes a changed selection take effect.
+  The channel owns the sound on Android 8+ — a notification builder's `setSound`
+  is ignored once the channel exists — and it is published with `USAGE_ALARM`
+  attributes whenever the day plan is applied (boot, save, midnight). Publishing
+  it is deliberately *not* done per alert: Android ignores a new ringtone on an
+  existing channel, so a change means deleting and recreating the channel, and an
+  alert posted across that swap can be bound to the dead channel record and come
+  out **silent**. The alert path only ever creates the channel when it is
+  missing.
 - The chosen ringtone is **verified to open** before it is given to the channel.
   The snapshot carries the JS-side copy of the file, and a URI that no longer
   resolves (file cleared, or a scoped `content://` the notification manager
@@ -45,15 +49,17 @@ Honest scope so nobody discovers these the hard way.
   notification with **no sound at all**. An unplayable URI now falls back to the
   platform alarm tone, and if even that is missing the bundled
   `res/raw/period_end.wav` is used, so the channel is never silent.
-- A period end can play from two sources: the native alarm channel (always) and
-  expo-audio from JS (only while the app is alive), which is what follows media
-  volume. The native channel is the one that still rings with the app closed.
-- **Stopping it** takes two routes: a "Stop alarm" action on the notification
-  and a matching button in the app's end-of-period toast. Cancelling the
-  notification silences the channel sound, but the notification action cannot
-  reach the expo-audio player, so the native side drops a stop signal that the
-  JS tick consumes and applies. Without that bridge the notification button
-  removed the notification while the JS tone rang on with no way to stop it.
+- A period end plays from **one** source: the native alarm channel. expo-audio is
+  used only by builds with no native scheduler at all (Expo Go, web, iOS), where
+  nothing else would make a sound. A second, JS-only copy was unreachable from
+  the notification shade, so it kept ringing after the user had stopped the
+  alarm.
+- **Stopping it** takes three routes, all of which cancel the one and only
+  ringing notification: the "Stop alarm" action on the notification, the matching
+  button in the app's end-of-period toast, and simply tapping any notification to
+  open the app. Cancelling the notification silences the channel sound, so that
+  is the whole of "stop". The notification action also leaves a stop signal the
+  JS tick consumes, so the in-app toast drops itself at the same moment.
   Stopping one alarm never disables the schedule; the next period end fires.
 
 ## The two alert toggles are independent

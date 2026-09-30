@@ -5,7 +5,8 @@
  *  2. Copy the Kotlin sources and Android resources from native/android into
  *     the generated android/ project (prebuild repeats the copy, so `expo
  *     prebuild` is always reproducible).
- *  3. Wire release signing and a bumpable versionCode in app/build.gradle, so
+ *  3. Pin the app theme to the light/white look the app is designed in.
+ *  4. Wire release signing and a bumpable versionCode in app/build.gradle, so
  *     a tagged CI build is signed with the real key instead of the debug one.
  *
  * Native code never contains schedule rules — it only reads the DayTimeline
@@ -13,6 +14,7 @@
  */
 const {
   withAndroidManifest,
+  withAndroidStyles,
   withMainApplication,
   withAppBuildGradle,
   withGradleProperties,
@@ -251,6 +253,57 @@ function withManifestEdits(config) {
   });
 }
 
+/**
+ * Pin the app theme to light so a fresh install is white no matter what the
+ * phone's dark-mode switch says.
+ *
+ * `userInterfaceStyle: "light"` in app.json is a NO-OP without expo-system-ui:
+ * prebuild only prints "Install expo-system-ui in your project to enable this
+ * feature." and leaves the Expo template's
+ * `AppTheme` parent = `Theme.AppCompat.DayNight.NoActionBar`, which follows the
+ * system dark mode. So on a phone with dark mode on, the launch window and every
+ * native-drawn surface (dialogs, the dev menu) came up dark while the app's own
+ * `theme` setting defaulted to the white look — a dark window behind a white
+ * app, and a dark flash before the first React frame.
+ *
+ * The theme the user picks in Settings is the app's own `theme` setting (home +
+ * settings pages), so this only fixes the *native* shell. Setting the parent to
+ * the Light variant and turning force-dark off makes the native shell white
+ * regardless of the OS, with no extra dependency.
+ */
+const APP_THEME_ITEMS = {
+  // Android 10+ inverts a light app that has not opted out, which would darken
+  // the white canvas behind our own light surfaces.
+  "android:forceDarkAllowed": "false",
+  "android:windowLightStatusBar": "true",
+};
+
+function withLightAppTheme(config) {
+  return withAndroidStyles(config, (cfg) => {
+    const resources = cfg.modResults.resources ?? (cfg.modResults.resources = {});
+    const styles = Array.isArray(resources.style) ? resources.style : (resources.style = []);
+
+    let appTheme = styles.find((style) => style && style.$ && style.$.name === "AppTheme");
+    if (!appTheme) {
+      appTheme = { $: { name: "AppTheme" }, item: [] };
+      styles.push(appTheme);
+    }
+    appTheme.$.parent = "Theme.AppCompat.Light.NoActionBar";
+
+    const items = Array.isArray(appTheme.item) ? appTheme.item : (appTheme.item = []);
+    for (const [name, value] of Object.entries(APP_THEME_ITEMS)) {
+      const existing = items.find((item) => item && item.$ && item.$.name === name);
+      if (existing) {
+        existing._ = value;
+      } else {
+        items.push({ $: { name }, _: value });
+      }
+    }
+
+    return cfg;
+  });
+}
+
 function withMainApplicationRegistration(config) {
   return withMainApplication(config, (cfg) => {
     let contents = cfg.modResults.contents;
@@ -307,6 +360,7 @@ function copyDirRecursive(from, to) {
 module.exports = function withPeriodTimerAndroid(config) {
   config = withManifestEdits(config);
   config = withMainApplicationRegistration(config);
+  config = withLightAppTheme(config);
   config = copyKotlinAndResources(config);
   config = withGradleTuning(config);
   config = withReleaseSigning(config);

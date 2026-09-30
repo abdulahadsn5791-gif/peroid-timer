@@ -80,12 +80,18 @@ object AlarmSchedulerCore {
 
     /**
      * Arms one "alarm clock" per period end: fires ACTION_END_ALERT, which
-     * rings the alarm ringtone and posts a heads-up notification — even when
-     * the app process is dead. The PendingIntent request code rotates per
+     * rings the alarm ringtone and posts a heads-up notification — even when the
+     * app process is dead. The PendingIntent request code rotates per
      * calendar day, so the same period id rings again on other weekdays of the
      * weekly timetable instead of colliding with a stale PendingIntent.
+     *
+     * This is also where the alarm channel is published with the chosen
+     * ringtone: it runs whenever the app applies its day plan (boot, save,
+     * midnight) — the only moment a channel swap cannot race an alert into
+     * silence, because nothing is ringing yet.
      */
     fun scheduleEndAlerts(context: Context, snapshot: TimelineSnapshot): Int {
+        EndAlertNotifier.publishChannel(context, snapshot.alarmSoundUri)
         val now = System.currentTimeMillis() / 1000L
         var scheduled = 0
         for (seg in snapshot.segments) {

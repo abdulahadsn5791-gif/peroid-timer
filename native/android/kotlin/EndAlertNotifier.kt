@@ -13,16 +13,16 @@ import androidx.core.app.NotificationCompat
  * The "period ended" ALARM — the loud one. Posts a heads-up notification on a
  * dedicated alarm channel, using the user's custom ringtone
  * (snapshot.alarmSoundUri) or the built-in alarm sound. Fired from
- * TimerAlarmReceiver on an exact alarm, so it rings even when the app process
- * is dead and the phone is locked.
+ * TimerAlarmReceiver on an exact alarm and from PeriodForegroundService on its
+ * own tick, so it rings even when the app process is dead and the phone is
+ * locked — and even when exact-alarm access was never granted.
  *
- * The tone is the CHANNEL's sound, and the channel is (re)published with
- * `USAGE_ALARM` attributes before every alert. Android 8+ ignores `setSound` on
- * a notification builder once the channel exists, so the channel's own sound is
- * the only thing that decides what plays — leaving it unset (or set by an older
- * build) is what made the alarm follow media volume instead of alarm volume.
- * Publishing it here keeps the ringtone on the alarm stream and lets the
- * "Stop alarm" action silence it by cancelling the notification.
+ * The tone is the CHANNEL's sound with `USAGE_ALARM` attributes: Android 8+
+ * ignores `setSound` on a notification builder once the channel exists, so the
+ * channel's own sound is the only thing that decides what plays, and it plays on
+ * the alarm stream rather than media volume. The channel is published by
+ * [publishChannel] when the day plan is applied, and the "Stop alarm" action
+ * silences it by cancelling the notification.
  */
 object EndAlertNotifier {
     const val CHANNEL_ID = "period-timer-alarm"
@@ -38,26 +38,84 @@ object EndAlertNotifier {
     /**
      * (Re)publishes the alarm channel with the given ringtone on the ALARM
      * audio stream. A no-op caller passes null to keep the platform default
-     * alarm tone. Must be called before notifying, since the channel is what
-     * actually plays the sound on Android 8+.
+     * alarm tone.
+     *
+     * Android only honours the sound a channel is FIRST created with, so a new
+     * ringtone means deleting and recreating the channel. That swap must never
+     * happen in the same breath as posting an alert: the notification manager
+     * can hand a freshly posted notification to the channel record it still has
+     * cached, so an alert posted across a channel swap comes out SILENT — the
+     * heads-up appears with its "Stop alarm" button and makes no sound at all.
+     * So this runs when the day plan is applied (boot, save, midnight) and
+     * [post] only ever creates the channel when it is missing. The swap is also
+     * skipped outright while an alert is on screen, so a new ringtone can never
+     * cut off an alarm that is still ringing.
      */
-    fun applyChannelSound(context: Context, alarmSoundUri: String?) {
+    fun publishChannel(context: Context, alarmSoundUri: String?) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val uri = resolveAlarmUri(context, alarmSoundUri)
 
-        // Android only honours the sound a channel is FIRST created with; a later
-        // createNotificationChannel with a different ringtone is silently ignored.
-        // So drop the channel whenever the wanted ringtone no longer matches, which
-        // is what makes picking a new ringtone take effect. Safe here because this
-        // runs immediately before the alert is posted.
         if (android.os.Build.VERSION.SDK_INT >= 26) {
             val existing = manager.getNotificationChannel(CHANNEL_ID)
             if (existing != null && existing.sound != uri) {
+                // Deleting a channel takes its notifications down with it, which
+                // would silence a ring the user has not stopped yet. The next plan
+                // apply picks the new ringtone up.
+                if (isAlertShowing(manager)) return
                 manager.deleteNotificationChannel(CHANNEL_ID)
             }
         }
 
-        val channel = NotificationChannel(
+        manager.createNotificationChannel(buildChannel(uri))
+    }
+
+    /**
+     * The single place a period end becomes an alarm.
+     *
+     * Both watchers funnel through here — the exact-alarm broadcast and the
+     * foreground service — and the `weekday:periodId` dedupe key means whichever
+     * one gets there first rings and the other is a no-op, so a period can never
+     * ring twice. Returns true when this call was the one that rang.
+     *
+     * Both toggles are honoured independently: the notification toggle stops
+     * the alert entirely, the sound toggle stops just the ringtone.
+     */
+    fun ringIfJustEnded(
+        context: Context,
+        snapshot: TimelineSnapshot,
+        ended: SegmentSnapshot,
+        next: SegmentSnapshot?,
+        now: Long,
+    ): Boolean {
+        if (snapshot.segments.isEmpty()) return false // empty preset day: never ring
+        if (!snapshot.soundEnabled && !snapshot.notificationsEnabled) return false
+
+        val key = "${snapshot.weekday}:${ended.id}"
+        if (SnapshotStore.lastNotifiedKey(context) == key) return false
+        SnapshotStore.setLastNotifiedKey(context, key)
+
+        if (!snapshot.notificationsEnabled) {
+            // Silent day end: nothing posts, and any still-ringing alarm stops.
+            cancelAllAlarms(context)
+            return true
+        }
+
+        post(context, snapshot, ended, next, now)
+        TimerWidgetProvider.requestUpdate(context)
+        return true
+    }
+
+    /** Creates the channel only when it does not exist yet — the safe path used while an alert is going out. */
+    private fun ensureChannel(context: Context, alarmSoundUri: String?) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (android.os.Build.VERSION.SDK_INT >= 26 && manager.getNotificationChannel(CHANNEL_ID) != null) {
+            return
+        }
+        manager.createNotificationChannel(buildChannel(resolveAlarmUri(context, alarmSoundUri)))
+    }
+
+    private fun buildChannel(uri: android.net.Uri): NotificationChannel =
+        NotificationChannel(
             CHANNEL_ID,
             "Period-end alarm",
             NotificationManager.IMPORTANCE_HIGH,
@@ -75,14 +133,13 @@ object EndAlertNotifier {
                     .build(),
             )
         }
-        manager.createNotificationChannel(channel)
-    }
 
     /**
-     * Posts the alarm notification for the period that just ended. Returns the
-     * notification id used, so callers can cancel it later if needed.
+     * Posts the alarm notification for the period that just ended. Only
+     * [ringIfJustEnded] calls this, so an alert is never posted without the
+     * toggles and the dedupe having been applied first.
      */
-    fun post(context: Context, snapshot: TimelineSnapshot, ended: SegmentSnapshot, next: SegmentSnapshot?, now: Long): Int {
+    private fun post(context: Context, snapshot: TimelineSnapshot, ended: SegmentSnapshot, next: SegmentSnapshot?, now: Long) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         val accent = compatColor(snapshot.accentHex, 0xFF2563EB.toInt())
@@ -128,13 +185,15 @@ object EndAlertNotifier {
             .setColorized(true)
             .addAction(R.drawable.ic_stat_clock, "Stop alarm", stopIntent)
 
-        // The channel owns the audio on Android 8+, and an existing channel keeps
-        // whatever sound it was last given. So the sound toggle decides the
-        // CHANNEL, not just the builder: the ringing alarm channel when sound
-        // is on, and the app's silent countdown channel when it is off. Posting
-        // the quiet alert on the alarm channel would still ring it.
+        // The channel owns the audio on Android 8+, so the sound toggle decides the
+        // CHANNEL, not just the builder: the ringing alarm channel when sound is
+        // on, and the app's silent countdown channel when it is off. Posting the
+        // quiet alert on the alarm channel would still ring it.
         if (snapshot.soundEnabled) {
-            applyChannelSound(context, snapshot.alarmSoundUri)
+            // Only ever creates the channel when it is missing: the ringtone is
+            // published by publishChannel() when the day plan is applied, so no
+            // channel swap can race this alert into silence.
+            ensureChannel(context, snapshot.alarmSoundUri)
             manager.notify(id, builder.build())
         } else {
             OngoingNotifier.ensureChannel(context)
@@ -152,7 +211,6 @@ object EndAlertNotifier {
                     .build(),
             )
         }
-        return id
     }
 
     fun cancel(context: Context, id: Int) {
@@ -174,6 +232,10 @@ object EndAlertNotifier {
             if (isEndAlert) manager.cancel(n.id)
         }
     }
+
+    /** True while one of our end-of-period alerts is on screen. */
+    private fun isAlertShowing(manager: NotificationManager): Boolean =
+        manager.activeNotifications.any { it.channelId == CHANNEL_ID || it.id in ALERT_ID_RANGE }
 
     private fun resolveAlarmUri(context: Context, alarmSoundUri: String?): android.net.Uri {
         if (!alarmSoundUri.isNullOrBlank()) {

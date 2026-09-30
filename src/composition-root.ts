@@ -124,7 +124,14 @@ export class PeriodTimerApp implements AppDeps {
   }
 
   async runBootstrap(): Promise<void> {
-    registerNotificationResponseHandler(() => this.refreshHome());
+    registerNotificationResponseHandler(() => {
+      // Tapping any notification means "I'm here, stop it" — the same outcome as
+      // the alarm notification's own "Stop alarm" action. Without this, opening
+      // the app from the shade left the alarm ringing with the app in the
+      // foreground and no obvious way to end it.
+      void this.stopAlarm();
+      this.refreshHome();
+    });
     await configureNotificationChannels();
     await requestNotificationPermission();
     this.onBackgroundTick();

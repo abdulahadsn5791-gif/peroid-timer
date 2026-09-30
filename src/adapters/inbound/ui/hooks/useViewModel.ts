@@ -19,24 +19,34 @@ export function useHomeViewModel(deps: AppDeps): HomeViewModelState {
   useEffect(() => {
     const refresh = () => setView(deps.getHomeView());
     const unsubDraft = deps.subscribeDraft(refresh);
+    // A tick reads the schedule, plays the alarm and re-renders. setInterval does
+    // not wait for it, so a slow tick could overlap the next one and report the
+    // same period end twice; one tick at a time keeps the flash single-shot.
+    let ticking = false;
     const timer = setInterval(async () => {
-      // A "Stop alarm" pressed on the notification can only cancel the native
-      // alarm, never the tone this app is playing, so apply it here too.
-      if (await deps.consumeStopSignal()) {
-        void deps.stopAlarm();
-        setFlash((f) => ({ ...f, alarmEnabled: false, periodName: null }));
+      if (ticking) return;
+      ticking = true;
+      try {
+        // A "Stop alarm" pressed on the notification silences the alarm natively
+        // and leaves this signal, so the in-app toast can drop itself too.
+        if (await deps.consumeStopSignal()) {
+          void deps.stopAlarm();
+          setFlash((f) => ({ ...f, alarmEnabled: false, periodName: null }));
+          refresh();
+          return;
+        }
+        const result = await deps.checkPeriodEnd();
+        if (result.justEnded) {
+          // Read the toggles from the draft the flash is about to act on, so the
+          // "Stop alarm" control only shows when there is actually a tone to stop.
+          const draft = deps.settingsIsOpen() ? deps.getDraft() : null;
+          const alarmEnabled = draft ? draft.soundEnabled && draft.notificationsEnabled : true;
+          setFlash((f) => ({ periodName: result.periodName, key: f.key + 1, alarmEnabled }));
+        }
         refresh();
-        return;
+      } finally {
+        ticking = false;
       }
-      const result = await deps.checkPeriodEnd();
-      if (result.justEnded) {
-        // Read the toggles from the draft the flash is about to act on, so the
-        // "Stop alarm" control only shows when there is actually a tone to stop.
-        const draft = deps.settingsIsOpen() ? deps.getDraft() : null;
-        const alarmEnabled = draft ? draft.soundEnabled && draft.notificationsEnabled : true;
-        setFlash((f) => ({ periodName: result.periodName, key: f.key + 1, alarmEnabled }));
-      }
-      refresh();
     }, 1000);
     deps.onBackgroundTick();
     return () => {
