@@ -62,7 +62,13 @@ class TimerAlarmReceiver : BroadcastReceiver() {
      */
     private fun onEndAlert(context: Context, snapshot: TimelineSnapshot, intent: Intent, now: Long) {
         val segId = intent.getStringExtra(AlarmSchedulerCore.EXTRA_SEGMENT_ID) ?: return
-        val ended = snapshot.segments.firstOrNull { it.id == segId } ?: return
+        // Match on id AND fire time: the v7 snapshot repeats every period id on
+        // each day of the week, so matching by id alone would grab the FIRST
+        // day's segment — the wrong dedupe key (a later occurrence gets
+        // swallowed) and wrong "up next" times in the alert body.
+        val at = intent.getLongExtra(AlarmSchedulerCore.EXTRA_AT_UNIX_SEC, -1L)
+        val ended = snapshot.segments.firstOrNull { it.id == segId && (at == -1L || it.endUnixSec == at) }
+            ?: return
         EndAlertNotifier.ringIfJustEnded(
             context,
             snapshot,

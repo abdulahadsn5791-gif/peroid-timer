@@ -59,6 +59,7 @@ class PeriodForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        latestStartId = startId
         val snapshot = SnapshotStore.load(this)
         if (snapshot == null || snapshot.segments.isEmpty()) {
             // Nothing scheduled (empty preset day or no snapshot yet): stop quietly,
@@ -163,6 +164,12 @@ class PeriodForegroundService : Service() {
     private fun stopSelfAndClear() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         OngoingNotifier.clear(this)
-        stopSelf()
+        // stopSelf(int) with the latest startId: if another start command
+        // arrived between this decision and the stop, the newer command keeps
+        // the service alive instead of the stop killing its work mid-flight.
+        stopSelf(latestStartId)
     }
+
+    /** Start id of the most recent onStartCommand; see stopSelfAndClear. */
+    private var latestStartId = 0
 }

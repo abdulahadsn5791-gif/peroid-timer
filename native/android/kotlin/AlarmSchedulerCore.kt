@@ -169,8 +169,16 @@ object AlarmSchedulerCore {
             .putExtra(EXTRA_SEGMENT_ID, segId)
             .putExtra(EXTRA_TRANSITION, transition)
             .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
-        // One PendingIntent per (segment, transition) so cancellations don't collide.
-        val code = (segId.hashCode() * 31 + transition.hashCode()) and 0x7fffffff
+        // One PendingIntent per (segment, transition, FIRE TIME). The fire time
+        // MUST be part of the code: the v7 snapshot holds the same period id on
+        // every day of the week, and without the time Monday's "p1 start" and
+        // Tuesday's "p1 start" would share one PendingIntent — each arm would
+        // replace the previous alarm and only the last-armed day would fire.
+        val code = (
+            segId.hashCode() * 31 +
+                transition.hashCode() * 1_000_003 +
+                atUnixSec.hashCode()
+            ) and 0x7fffffff
         return PendingIntent.getBroadcast(context, code, intent, FLAGS)
     }
 
