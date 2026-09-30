@@ -51,6 +51,37 @@ object OngoingNotifier {
         manager.cancel(NOTIFICATION_ID)
     }
 
+    /**
+     * A silent placeholder for the instant between startForegroundService() and
+     * deciding there is nothing worth showing.
+     *
+     * Android allows a startForegroundService()'d service about five seconds to
+     * call startForeground(); stopping itself instead of promoting is a
+     * ForegroundServiceDidNotStartInTimeException, and the system kills the app
+     * process over it. So the foreground service has to promote even on the
+     * paths where it is about to stop — a fresh install hits one of those on
+     * every launch, because it has no snapshot yet.
+     *
+     * It is a real notification because startForeground() will not accept
+     * anything else, but it exists only to honour that contract: the service
+     * removes it within the same call, so the user never sees it.
+     */
+    fun composeIdle(context: Context): Notification {
+        ensureChannel(context)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_clock)
+            .setContentTitle("Period timer")
+            .setContentText("Nothing scheduled")
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setOnlyAlertOnce(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setDefaults(0)
+            .build()
+    }
+
     private fun composeBuilder(
         context: Context,
         snapshot: TimelineSnapshot,

@@ -52,7 +52,10 @@ class PeriodForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val snapshot = SnapshotStore.load(this)
         if (snapshot == null || snapshot.segments.isEmpty()) {
-            // Nothing scheduled (empty preset day or no snapshot yet): stop quietly.
+            // Nothing scheduled (empty preset day or no snapshot yet): stop quietly,
+            // but promote first — every startForegroundService() carries a ~5s
+            // deadline to call startForeground(), and missing it kills the app.
+            promoteToForeground(null, null)
             stopSelfAndClear()
             return START_NOT_STICKY
         }
@@ -61,6 +64,9 @@ class PeriodForegroundService : Service() {
         // Before the self-stop check: this can be the tick that sees a period end.
         ringIfPeriodJustEnded(snapshot, lookup, now)
         if (lookup.current == null && lookup.next == null) {
+            // Same contract as above: the day is over, but this service was just
+            // started, so it must promote before it may stop.
+            promoteToForeground(snapshot, lookup)
             stopSelfAndClear()
             return START_NOT_STICKY
         }
@@ -103,6 +109,22 @@ class PeriodForegroundService : Service() {
         val sinceEnd = now - ended.endUnixSec
         if (sinceEnd < 0 || sinceEnd >= END_ALERT_WINDOW_SEC) return
         EndAlertNotifier.ringIfJustEnded(this, snapshot, ended, lookup.next, now)
+    }
+
+    /**
+     * Calls startForeground(), which every startForegroundService() requires.
+     * Falls back to a placeholder when there is no real countdown to show, so a
+     * service that is about to stop can still honour that deadline instead of
+     * throwing ForegroundServiceDidNotStartInTimeException and taking the app
+     * process down with it.
+     */
+    private fun promoteToForeground(snapshot: TimelineSnapshot?, lookup: Lookup?) {
+        val notification = if (snapshot != null && lookup != null) {
+            OngoingNotifier.compose(this, snapshot, lookup)
+        } else {
+            OngoingNotifier.composeIdle(this)
+        }
+        startForeground(OngoingNotifier.NOTIFICATION_ID, notification)
     }
 
     /** Battery-friendly: 1s while the screen is on, 5s once it's asleep. */

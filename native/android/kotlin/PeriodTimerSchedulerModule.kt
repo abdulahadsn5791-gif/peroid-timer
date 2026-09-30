@@ -73,6 +73,11 @@ class PeriodTimerSchedulerModule(
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun startLive(): Boolean {
         val app = reactApplicationContext
+        // Nothing scheduled (fresh install, or an empty preset day): there is no
+        // countdown to show, so starting the service would only have it promote a
+        // placeholder and stop again.
+        val snapshot = SnapshotStore.load(app)
+        if (snapshot == null || snapshot.segments.isEmpty()) return true
         startForegroundServiceSafe(app)
         return true
     }

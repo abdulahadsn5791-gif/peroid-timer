@@ -133,7 +133,7 @@ Inbound ports are the use-case interfaces (`GetHomeView`, `OpenSettings`, `Previ
 
 ## 5. Live progress notification (always on, Android)
 1. **Ongoing notification (Google-Maps-style):** an ongoing public notification with a real **progress bar** (`setProgress`) shrinking as the period elapses, a system **chronometer** live countdown (`"Period 2 · ends in 24:37"`) on Android 7+ (static text before that), and BigText detail lines with the current and next period + start/end labels.
-2. It is delivered by a **foreground service** (`PeriodForegroundService`, 1 tick/sec while the screen is on, 5 sec when off) plus one exact alarm per schedule transition, so the countdown bar stays live in the shade while the app is closed.
+2. It is delivered by a **foreground service** (`PeriodForegroundService`, 1 tick/sec while the screen is on, 5 sec when off) plus one exact alarm per schedule transition, so the countdown bar stays live in the shade while the app is closed. A service started with `startForegroundService` has ~5 seconds to call `startForeground`, and stopping instead of promoting is a `ForegroundServiceDidNotStartInTimeException` that kills the process — so it promotes (with a placeholder notification when there is no countdown to show) before every path that stops, and JS does not start it at all when nothing is scheduled.
 3. End-of-period **sound + notification** stays independent (driven by the sound toggle). It rings from exactly one source — the native alarm channel — so every stop route (the notification's "Stop alarm" action, the in-app toast button, tapping a notification) can silence it. The same service also watches for the period end, which is what makes the alarm fire even without exact-alarm access.
 
 ---
