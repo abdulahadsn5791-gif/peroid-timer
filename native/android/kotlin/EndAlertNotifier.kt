@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
 
 /**
@@ -218,6 +219,10 @@ object EndAlertNotifier {
         manager.cancel(id)
     }
 
+    /** True for a notification this app posted as a period-end alert. */
+    private fun isEndAlert(n: StatusBarNotification): Boolean =
+        n.notification.channelId == CHANNEL_ID || n.id in ALERT_ID_RANGE
+
     /**
      * Silences the alarm: cancelling the notification stops its channel sound,
      * so this is the whole of "stop". Exposed to JS for the in-app control.
@@ -228,14 +233,21 @@ object EndAlertNotifier {
     fun cancelAllAlarms(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         for (n in manager.activeNotifications) {
-            val isEndAlert = n.notification.channelId == CHANNEL_ID || n.id in ALERT_ID_RANGE
-            if (isEndAlert) manager.cancel(n.id)
+            if (isEndAlert(n)) manager.cancel(n.id)
         }
     }
 
-    /** True while one of our end-of-period alerts is on screen. */
-    private fun isAlertShowing(manager: NotificationManager): Boolean =
-        manager.activeNotifications.any { it.channelId == CHANNEL_ID || it.id in ALERT_ID_RANGE }
+    /**
+     * True while one of our end-of-period alerts is on screen. Deliberately
+     * written with the same activeNotifications walk as cancelAllAlarms, so the
+     * only Android APIs it touches are ones this file already compiles against.
+     */
+    private fun isAlertShowing(manager: NotificationManager): Boolean {
+        for (n in manager.activeNotifications) {
+            if (isEndAlert(n)) return true
+        }
+        return false
+    }
 
     private fun resolveAlarmUri(context: Context, alarmSoundUri: String?): android.net.Uri {
         if (!alarmSoundUri.isNullOrBlank()) {
