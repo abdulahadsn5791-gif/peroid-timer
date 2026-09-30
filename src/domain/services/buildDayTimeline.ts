@@ -42,6 +42,8 @@ export interface DayTimelineEntry {
   boundaryUnixSec: number;
   /** 0 = Sunday … 6 = Saturday — the weekday of this entry. */
   weekday: number;
+  /** ISO date of this entry ("2026-09-30") — the native dedupe key prefix. */
+  dateKey: string;
   segments: DayTimelineSegment[];
 }
 
@@ -62,11 +64,21 @@ export interface DayTimeline {
 /** How many consecutive days the snapshot covers: today + a full week. */
 export const SNAPSHOT_DAY_COUNT = 8;
 
+function isoDateKey(year: number, month1: number, day: number): string {
+  const mm = String(month1).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}-${mm}-${dd}`;
+}
+
 /** Local midnight `daysAhead` days after the given boundary (DST-correct). */
-function boundaryDaysAhead(boundaryUnixSec: number, daysAhead: number): { boundary: number; weekday: number } {
+function boundaryDaysAhead(boundaryUnixSec: number, daysAhead: number): { boundary: number; weekday: number; dateKey: string } {
   const d = new Date(boundaryUnixSec * 1000);
   const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + daysAhead);
-  return { boundary: Math.floor(m.getTime() / 1000), weekday: m.getDay() };
+  return {
+    boundary: Math.floor(m.getTime() / 1000),
+    weekday: m.getDay(),
+    dateKey: isoDateKey(m.getFullYear(), m.getMonth() + 1, m.getDate()),
+  };
 }
 
 function segmentsForDay(settings: Settings, boundaryUnixSec: number, weekday: number): DayTimelineSegment[] {
@@ -103,10 +115,11 @@ export function buildDayTimeline(
 ): DayTimeline {
   const days: DayTimelineEntry[] = [];
   for (let i = 0; i < SNAPSHOT_DAY_COUNT; i++) {
-    const { boundary, weekday } = boundaryDaysAhead(boundaryUnixSec, i);
+    const { boundary, weekday, dateKey } = boundaryDaysAhead(boundaryUnixSec, i);
     days.push({
       boundaryUnixSec: boundary,
       weekday: weekdayOf(weekday),
+      dateKey,
       segments: segmentsForDay(settings, boundary, weekday),
     });
   }

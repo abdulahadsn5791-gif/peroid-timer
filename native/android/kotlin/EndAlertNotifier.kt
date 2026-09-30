@@ -94,7 +94,7 @@ object EndAlertNotifier {
         // Date-scoped key ("YYYY-MM-DD:periodId"): the old weekday-only key
         // never expired, so the same period was silently suppressed a week
         // later. A date key expires naturally — each new day is a fresh alert.
-        val key = "${SnapshotStore.dateKeyOf(ended)}:${ended.id}"
+        val key = "${SnapshotStore.dateKeyOf(snapshot, ended)}:${ended.id}"
         if (SnapshotStore.lastNotifiedKey(context) == key) return false
         SnapshotStore.setLastNotifiedKey(context, key)
 

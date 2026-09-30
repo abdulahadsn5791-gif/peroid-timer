@@ -59,6 +59,8 @@ data class SegmentSnapshot(
 data class DayEntry(
     val boundaryUnixSec: Long,
     val weekday: Int,
+    /** ISO date of this entry ("2026-09-30"); null in legacy v6 files. */
+    val dateKey: String?,
     val segments: List<SegmentSnapshot>,
 )
 
@@ -104,6 +106,30 @@ object SnapshotStore {
         }
     }
 
+    /**
+     * Atomic write: content goes to a temp file that is fsynced and then
+     * renamed over the target. The old write deleted the snapshot first, so a
+     * crash (or an OEM process kill) in that window left NO snapshot on disk —
+     * the app then came back to zero alarms, a dead widget and silence until
+     * the next manual open.
+     */
+    fun save(context: Context, json: String) {
+        val target = File(context.filesDir, NAME)
+        val tmp = File(context.filesDir, "$NAME.tmp")
+        try {
+            tmp.writeText(json)
+            if (!tmp.renameTo(target)) {
+                // Rename can fail across odd filesystems; fall back to a
+                // direct overwrite rather than losing the update entirely.
+                target.writeText(json)
+                tmp.delete()
+            }
+        } catch (e: Exception) {
+            tmp.delete()
+            throw e
+        }
+    }
+
     fun fromJson(o: JSONObject): TimelineSnapshot {
         val daysJson = o.optJSONArray("days")
         val days: List<DayEntry> = if (daysJson != null) {
@@ -114,6 +140,7 @@ object SnapshotStore {
                 DayEntry(
                     boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
                     weekday = o.optInt("weekday", 0),
+                    dateKey = null,
                     segments = segmentListFromJson(o.getJSONArray("segments")),
                 ),
             )
@@ -136,6 +163,7 @@ object SnapshotStore {
     private fun dayFromJson(o: JSONObject): DayEntry = DayEntry(
         boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
         weekday = o.optInt("weekday", 0),
+        dateKey = if (o.has("dateKey") && !o.isNull("dateKey")) o.getString("dateKey") else null,
         segments = segmentListFromJson(o.getJSONArray("segments")),
     )
 
@@ -237,11 +265,15 @@ object SnapshotStore {
     }
 
     /**
-     * "YYYY-MM-DD" of the day a segment belongs to, derived from its own
-     * start-second in local time — matches the JS-side date-scoped dedupe key
-     * and expires naturally, so the same period alerts again next week.
+     * "YYYY-MM-DD" of the day a segment belongs to — matches the JS-side
+     * date-scoped dedupe key and expires naturally, so the same period alerts
+     * again next week. Prefers the `dateKey` written next to the segment's day
+ *     entry; falls back to local-calendar arithmetic of the segment's own
+     * start-second for legacy v6 snapshots.
      */
-    fun dateKeyOf(seg: SegmentSnapshot): String {
+    fun dateKeyOf(snapshot: TimelineSnapshot, seg: SegmentSnapshot): String {
+        snapshot.days.firstOrNull { it.segments.any { s -> s === seg || (s.id == seg.id && s.endUnixSec == seg.endUnixSec) } }
+            ?.dateKey?.let { return it }
         val d = java.util.Calendar.getInstance()
         d.timeInMillis = seg.startUnixSec * 1000L
         val y = d.get(java.util.Calendar.YEAR)

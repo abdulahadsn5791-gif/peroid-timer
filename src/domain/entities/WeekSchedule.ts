@@ -23,10 +23,11 @@ export function weekdayOf(weekday: number): Weekday {
  *
  * Ids are only required to be unique *within* a day — the schedule editor
  * tracks the open card by id and the store patches by id, both scoped to the
- * active weekday, and the alert dedupe key is "weekday:periodId". Older builds
- * minted `draft-N` from a counter that reset on every launch, so a timetable can
- * legitimately hold two same-id periods on one day; {@link dedupeDay} hands the
- * later one a fresh id so editing never hits both at once.
+ * active weekday, and the alert dedupe key is "YYYY-MM-DD:periodId". Older
+ * builds minted `draft-N` from a counter that reset on every launch, so a
+ * timetable can legitimately hold two same-id periods on one day;
+ * {@link dedupeDay} hands the later one a fresh id so editing never hits both
+ * at once.
  */
 export function normalizeWeekSchedule(value: unknown): WeekSchedule {
   if (!Array.isArray(value) || value.length !== WEEKDAY_COUNT) {

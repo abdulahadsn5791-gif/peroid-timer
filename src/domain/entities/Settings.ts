@@ -32,7 +32,7 @@ export interface Settings {
   wallpaperUri: string | null;
   /** Base look for the no-wallpaper home screen (wallpaper mode stays glassy). */
   theme: AppTheme;
-  /** "weekday:periodId" of the last fired end-of-period alert (per-day dedupe). */
+  /** "YYYY-MM-DD:periodId" of the last fired end-of-period alert (per-day dedupe). */
   lastNotifiedKey: string | null;
 }
 

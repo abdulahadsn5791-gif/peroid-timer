@@ -16,8 +16,20 @@ function snapshotFile(): File {
 export class FileSnapshotWriter implements LockScreenSnapshotPort {
   async write(timeline: DayTimeline): Promise<void> {
     const file = snapshotFile();
+    // Atomic replace: the old delete-then-write left a window where a crash
+    // (or an OEM kill) destroyed the only schedule snapshot on disk — the app
+    // then came back with zero alarms and a dead widget. Writing a temp file
+    // and renaming over the target makes every write all-or-nothing.
+    const tmp = new File(Paths.document, `${SNAPSHOT_NAME}.tmp`);
+    tmp.write(JSON.stringify(timeline));
     if (file.exists) file.delete();
-    file.write(JSON.stringify(timeline));
+    try {
+      tmp.move(file);
+    } catch {
+      // Rename fallback: direct overwrite beats losing the update.
+      file.write(JSON.stringify(timeline));
+      if (tmp.exists) tmp.delete();
+    }
   }
 
   read(): DayTimeline | null {
