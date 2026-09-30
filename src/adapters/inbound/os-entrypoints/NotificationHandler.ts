@@ -27,3 +27,19 @@ export async function requestNotificationPermission(): Promise<boolean> {
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
 }
+
+/**
+ * Whether the OS would actually let us post a notification right now.
+ *
+ * Android 13+ makes POST_NOTIFICATIONS a runtime permission, and a denied one
+ * turns every notify() into a silent no-op. Since the native alarm channel is
+ * where the alarm sound lives, that would mean a completely silent alarm, so the
+ * audio adapter asks this before deciding the native alarm is the only sound.
+ *
+ * Not cached: the user can grant or revoke it between two period ends, and it is
+ * only ever read on the one path where the answer changes what gets played.
+ */
+export async function notificationsPermitted(): Promise<boolean> {
+  const current = await Notifications.getPermissionsAsync();
+  return current.granted;
+}

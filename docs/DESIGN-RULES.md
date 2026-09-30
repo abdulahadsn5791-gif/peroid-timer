@@ -106,7 +106,7 @@ scripts/                          (Bun-only dev scripts)
 | `SettingsRepositoryPort` | `load(): Settings` · `save(s: Settings): void` |
 | `ImagePickerPort` | `pickImage(): Promise<{ uri: string; width: number; height: number } \| null>` |
 | `WallpaperStorePort` | `getStoredUri(): string \| null` · `setPreviewImage(src): Promise<string \| null>` · `clearPreview(): void` · `commitPreview(): Promise<string \| null>` · `rollbackPreview(): void` · `removeStored(): Promise<void>` |
-| `SoundPort` | `prepare(): Promise<void>` · `playEndSound(): Promise<void>` (only reached by builds with no native scheduler — the native alarm channel owns the sound) · `stopEndSound(): Promise<void>` · `consumeStopSignal(): Promise<boolean>` |
+| `SoundPort` | `prepare(): Promise<void>` · `playEndSound(): Promise<void>` (defers to the native alarm channel, and only plays in JS when that channel cannot post — no native scheduler, or the OS blocks notifications) · `stopEndSound(): Promise<void>` · `consumeStopSignal(): Promise<boolean>` |
 | `AlertSchedulerPort` | `scheduleTransitionAlerts(timeline: DayTimeline): Promise<void>` · `scheduleEndOfPeriodAlert(timeline: DayTimeline): Promise<void>` · `startLiveNotification(): Promise<void>` · `stopLiveNotification(): Promise<void>` · `hasExactAlarmAccess(): Promise<boolean>` · `requestExactAlarmAccess(): Promise<boolean>` |
 | `SoundPickerPort` | `pickSound(): Promise<{ uri: string; name: string } \| null>` |
 | `LockScreenSnapshotPort` | `write(timeline: DayTimeline): Promise<void>` · `read(): DayTimeline \| null` |

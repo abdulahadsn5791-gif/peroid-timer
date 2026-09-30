@@ -15,18 +15,26 @@ const BUILTIN_TONE = require("../../../../assets/period-end.wav");
  * a second, JS-only copy is unreachable from the notification shade, so it kept
  * ringing after the user had stopped the alarm.
  *
- * The bundled three-beat tone (assets/period-end.wav) is therefore only a
- * fallback for builds without the native scheduler (Expo Go, web, iOS, a dev
- * client built before `expo prebuild`), where nothing else would make a sound.
+ * There is one deliberate exception, and it exists because a native alarm is
+ * delivered AS a notification: when the OS blocks notifications (Android 13+
+ * POST_NOTIFICATIONS denied), notify() posts nothing at all, so the native
+ * channel cannot make the sound either. Then, and only then, the bundled tone
+ * plays in-app — the app is open, because a notification that was never
+ * delivered is never something the user tapped. In every other case the native
+ * alarm is the single source.
  */
 export class ExpoAudioPlayer implements SoundPort {
   private readonly builtinPlayer = createAudioPlayer(BUILTIN_TONE);
   private customPlayer: ReturnType<typeof createAudioPlayer> | null = null;
   private customUri: string | null = null;
 
-  constructor() {
-    // No ringtone is wanted in a real build — that is the native alarm's job —
-    // so only the fallback loops, until it is stopped.
+  /**
+   * @param notificationsPermitted whether the OS would let us post a
+   * notification right now. Required, so the wiring cannot be forgotten.
+   */
+  constructor(private readonly notificationsPermitted: () => Promise<boolean>) {
+    // Only the fallback loops, and only until it is stopped: the native alarm is
+    // a one-shot notification whose sound dies with the notification.
     this.builtinPlayer.loop = true;
   }
 
@@ -60,8 +68,12 @@ export class ExpoAudioPlayer implements SoundPort {
 
   async playEndSound(): Promise<void> {
     // The native alarm already rings this same period end; a JS tone on top
-    // would double it and be the copy no stop button can reach.
-    if (this.nativeAlarmAvailable()) return;
+    // would double it and be the copy no stop button can reach. But it rings it
+    // by posting a notification, so when the OS blocks notifications it is silent
+    // — and a blocked notification never reached the shade either, so nobody has
+    // stopped anything: this is the one case where the JS tone is the only sound
+    // there can be.
+    if (this.nativeAlarmAvailable() && (await this.notificationsPermitted())) return;
     const player = (this.customUri ? this.customPlayer : null) ?? this.builtinPlayer;
     try {
       player.seekTo(0);

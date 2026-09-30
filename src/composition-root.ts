@@ -15,6 +15,7 @@ import { FileSnapshotWriter } from "@adapters/outbound/lock-screen/FileSnapshotW
 import {
   registerNotificationResponseHandler,
   configureNotificationChannels,
+  notificationsPermitted,
   requestNotificationPermission,
 } from "@adapters/inbound/os-entrypoints/NotificationHandler";
 
@@ -149,7 +150,7 @@ export function createApp(): AppDeps {
   const settingsRepository = new MmkvSettingsRepository();
   const wallpaperStore = new FileWallpaperStore();
   const imagePicker = new ExpoImagePicker();
-  const sound = new ExpoAudioPlayer();
+  const sound = new ExpoAudioPlayer(notificationsPermitted);
   const soundPicker = new DocumentPickerSoundPicker();
   const alerts = new NativeAlertScheduler();
   const snapshot = new FileSnapshotWriter();
