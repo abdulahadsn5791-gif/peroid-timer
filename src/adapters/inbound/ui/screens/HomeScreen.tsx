@@ -38,7 +38,13 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
 
   const sheetOpen = isOpen && !!draft;
 
-  const ringSize = useMemo(() => ringSizeFor(isWide ? width * 0.5 : width, height), [width, height, isWide]);
+  // The user-scaled ring: ringSizeFor gives the layout default, the scale
+  // (60–130%) is the Settings slider value. Kept in the same useMemo so the
+  // drag updates exactly like the blur slider does.
+  const ringSize = useMemo(
+    () => Math.round(ringSizeFor(isWide ? width * 0.5 : width, height) * (view.ringSizeScale / 100)),
+    [width, height, isWide, view.ringSizeScale],
+  );
 
   const scrollY = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((event) => {
@@ -63,11 +69,15 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
       style={[
         styles.screen,
         {
+          // No wallpaper + light theme = the clean white look (surface-1), per
+          // DESIGN-RULES §1.1. The old #F3F4F6 canvas sat noticeably darker
+          // than the pure-white cards floating on it, so the home screen read
+          // "gray" — the exact complaint a white theme is meant to avoid.
           backgroundColor: view.hasWallpaper
             ? "#000"
             : view.theme === "dark"
               ? "#000000"
-              : tokens.color.canvas,
+              : tokens.color.surface1,
         },
       ]}
     >
@@ -201,7 +211,7 @@ export function AppLoading() {
   const skeletonRows = Array.from({ length: 5 }, (_, i) => i);
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: tokens.color.canvas }]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: tokens.color.surface1 }]}>
       <View style={styles.loadHeader}>
         <View style={styles.loadHeaderLeft}>
           <SkeletonBar width={92} height={26} radius={tokens.radius.md} />

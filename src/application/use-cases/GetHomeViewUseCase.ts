@@ -154,6 +154,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       todayLabel: todayLabel(this.clock.todayParts()),
       weekday,
       isEmptyDay: today.length === 0,
+      ringSizeScale: settings.ringSizeScale,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
       theme: settings.theme,

@@ -4,7 +4,11 @@ import type { Period } from "../entities/Period";
 export interface EndEvent {
   periodId: string;
   periodName: string;
-  /** "weekday:periodId" — dedupe key so the alert fires once per day+period. */
+  /**
+   * "YYYY-MM-DD:periodId" — date-scoped dedupe key so the alert fires once per
+   * calendar day+period. (The old weekday-only key never expired: the same
+   * period on the same weekday was silently suppressed a week later.)
+   */
   notifyKey: string;
 }
 
@@ -13,19 +17,19 @@ export interface EndEvent {
  * matching the web app's one-tick notification window). Used by the per-tick
  * "period ended" check to sound + flash exactly once per period.
  *
- * `notifyKey` carries the weekday, so the same period id on different weekdays
- * (weekly presets) never suppresses each other.
+ * `dateKey` ("2026-09-30") scopes the dedupe to one calendar day, so the same
+ * period alerts again on its next occurrence.
  */
 export function periodJustEnded(
   periods: readonly Period[],
   nowSecondsOfDay: number,
   lastNotifiedKey: string | null,
-  weekday: number,
+  dateKey: string,
   windowSeconds = 2,
 ): EndEvent | null {
   for (const p of periods) {
     const end = toSeconds(p.end);
-    const key = `${weekday}:${p.id}`;
+    const key = `${dateKey}:${p.id}`;
     if (
       nowSecondsOfDay >= end &&
       nowSecondsOfDay < end + windowSeconds &&

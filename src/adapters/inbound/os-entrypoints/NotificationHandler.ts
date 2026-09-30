@@ -13,11 +13,20 @@ export function registerNotificationResponseHandler(onResponse: () => void): voi
 
 export async function configureNotificationChannels(): Promise<void> {
   if (Platform.OS !== "android") return;
+  // MUST match the native OngoingNotifier channel exactly: same id, same
+  // IMPORTANCE_LOW, no sound, no vibration. The old JS side created this
+  // channel as HIGH with a vibration pattern — and Android keeps whichever
+  // definition is created FIRST, so fresh installs got a buzzing heads-up
+  // every second from the "silent" live countdown, while updated installs
+  // kept the native silent definition. importance also cannot be changed
+  // after creation, so the definitions have to agree at both layers.
   await Notifications.setNotificationChannelAsync("period-timer", {
     name: "Period timer",
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: Notifications.AndroidImportance.LOW,
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    vibrationPattern: [0, 250, 250, 250],
+    // No sound, no vibration pattern: this is the silent live-countdown
+    // channel. The loud alarm lives on the native "period-timer-alarm"
+    // channel, which only the Kotlin side creates.
   });
 }
 

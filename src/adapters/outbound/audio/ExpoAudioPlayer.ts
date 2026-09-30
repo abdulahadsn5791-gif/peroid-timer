@@ -24,18 +24,41 @@ const BUILTIN_TONE = require("../../../../assets/period-end.wav");
  * alarm is the single source.
  */
 export class ExpoAudioPlayer implements SoundPort {
-  private readonly builtinPlayer = createAudioPlayer(BUILTIN_TONE);
   private customPlayer: ReturnType<typeof createAudioPlayer> | null = null;
   private customUri: string | null = null;
+  private builtinPlayer: ReturnType<typeof createAudioPlayer> | null = null;
 
   /**
    * @param notificationsPermitted whether the OS would let us post a
    * notification right now. Required, so the wiring cannot be forgotten.
    */
   constructor(private readonly notificationsPermitted: () => Promise<boolean>) {
-    // Only the fallback loops, and only until it is stopped: the native alarm is
-    // a one-shot notification whose sound dies with the notification.
-    this.builtinPlayer.loop = true;
+    // createAudioPlayer can throw on devices where the audio module failed to
+    // initialize — this runs during app construction, and an unguarded throw
+    // here would blank-screen the whole app on launch. The player is created
+    // lazily on first use instead; a missing tone is recoverable, a dead app
+    // is not.
+    try {
+      this.builtinPlayer = createAudioPlayer(BUILTIN_TONE);
+      // Only the fallback loops, and only until it is stopped: the native alarm
+      // is a one-shot notification whose sound dies with the notification.
+      this.builtinPlayer.loop = true;
+    } catch {
+      this.builtinPlayer = null;
+    }
+  }
+
+  /** Lazily-created built-in tone player; null when audio init failed. */
+  private builtin(): ReturnType<typeof createAudioPlayer> | null {
+    if (this.builtinPlayer == null) {
+      try {
+        this.builtinPlayer = createAudioPlayer(BUILTIN_TONE);
+        this.builtinPlayer.loop = true;
+      } catch {
+        this.builtinPlayer = null;
+      }
+    }
+    return this.builtinPlayer;
   }
 
   async prepare(): Promise<void> {
@@ -74,16 +97,18 @@ export class ExpoAudioPlayer implements SoundPort {
     // stopped anything: this is the one case where the JS tone is the only sound
     // there can be.
     if (this.nativeAlarmAvailable() && (await this.notificationsPermitted())) return;
-    const player = (this.customUri ? this.customPlayer : null) ?? this.builtinPlayer;
+    const player = (this.customUri ? this.customPlayer : null) ?? this.builtin();
+    if (!player) return; // audio init failed everywhere; stay silent rather than crash
     try {
       player.seekTo(0);
       player.play();
     } catch {
       // Sound is best-effort; fall back to the bundled tone, which is the one
       // that is guaranteed to be bundled with the app.
+      const fallback = this.builtin();
       try {
-        this.builtinPlayer.seekTo(0);
-        this.builtinPlayer.play();
+        fallback?.seekTo(0);
+        fallback?.play();
       } catch {
         // give up silently
       }
@@ -91,7 +116,7 @@ export class ExpoAudioPlayer implements SoundPort {
   }
 
   async stopEndSound(): Promise<void> {
-    for (const player of [this.customPlayer, this.builtinPlayer]) {
+    for (const player of [this.customPlayer, this.builtin()]) {
       if (!player) continue;
       try {
         player.pause();

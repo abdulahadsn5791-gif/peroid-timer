@@ -82,6 +82,17 @@ class PeriodTimerSchedulerModule(
         return true
     }
 
+    /**
+     * Arms the nightly 00:00 rollover from JS. scheduleAll/scheduleEndAlerts
+     * already arm it themselves on every apply; this exists so the boot path
+     * can force it even when both schedules come back empty.
+     */
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun scheduleRollover(): Boolean {
+        AlarmSchedulerCore.scheduleRolloverAlarm(reactApplicationContext)
+        return true
+    }
+
     /** Stops the live progress notification service and its notification. */
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun stopLive(): Boolean {
@@ -134,6 +145,15 @@ class PeriodTimerSchedulerModule(
             } catch (_: Exception) {
                 // Foreground-service start can be blocked by OEMs or on some
                 // versions; the transition alarms + widget still function.
+            }
+        }
+
+        /** Best-effort stop used when nothing is scheduled anymore. */
+        fun stopLiveSafe(context: Context) {
+            try {
+                context.stopService(Intent(context, PeriodForegroundService::class.java))
+            } catch (_: Exception) {
+                // nothing to stop
             }
         }
     }

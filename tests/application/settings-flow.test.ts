@@ -77,10 +77,10 @@ describe("Settings flow (weekly)", () => {
     expect(repo.load().paletteIndex).toBe(2);
     expect(repo.load().weekSchedule).toHaveLength(7);
     expect(draft.isOpen()).toBe(false);
-    expect(snapshot.last?.version).toBe(6);
+    expect(snapshot.last?.version).toBe(7);
     expect(alerts.scheduled).toHaveLength(1);
     expect(alerts.startLiveCalls).toBe(1);
-    expect(snapshot.last?.segments).toHaveLength(4);
+    expect(snapshot.last?.days[0].segments).toHaveLength(4);
   });
 
   test("weekday switching is per-tab: Monday edits never touch Tuesday", () => {

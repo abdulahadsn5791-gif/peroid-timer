@@ -39,6 +39,7 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
       weekSchedule: draft.weekSchedule,
       accentColor: draft.accentColor,
       paletteIndex: draft.paletteIndex,
+      ringSizeScale: draft.ringSizeScale,
       colorClock: draft.colorClock,
       colorNotification: draft.colorNotification,
       colorActiveBars: draft.colorActiveBars,

@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -37,8 +38,16 @@ class PeriodForegroundService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
-            onTick()
-            handler.postDelayed(this, tickIntervalMs())
+            // Never let one bad tick kill the loop: a thrown exception here
+            // would silently freeze the live notification until the next
+            // start command. Reschedule in `finally` no matter what.
+            try {
+                onTick()
+            } catch (_: Exception) {
+                // tick is best-effort; the next one retries
+            } finally {
+                handler.postDelayed(this, tickIntervalMs())
+            }
         }
     }
 
@@ -70,7 +79,7 @@ class PeriodForegroundService : Service() {
             stopSelfAndClear()
             return START_NOT_STICKY
         }
-        startForeground(OngoingNotifier.NOTIFICATION_ID, OngoingNotifier.compose(this, snapshot, lookup))
+        startForegroundTyped(OngoingNotifier.compose(this, snapshot, lookup))
         if (!handler.hasCallbacks(tick)) handler.postDelayed(tick, 0L)
         return START_STICKY
     }
@@ -95,13 +104,31 @@ class PeriodForegroundService : Service() {
             stopSelfAndClear()
             return
         }
-        startForeground(OngoingNotifier.NOTIFICATION_ID, OngoingNotifier.compose(this, snapshot, lookup))
+        startForegroundTyped(OngoingNotifier.compose(this, snapshot, lookup))
+    }
+
+    /**
+     * startForeground with the manifest's specialUse type stated explicitly.
+     * On Android 14+ the two-arg call can throw MissingForegroundServiceType-
+     * Exception on some paths even when the manifest declares the type; the
+     * three-arg form is the contract that always holds.
+     */
+    private fun startForegroundTyped(notification: Notification) {
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            startForeground(
+                OngoingNotifier.NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            startForeground(OngoingNotifier.NOTIFICATION_ID, notification)
+        }
     }
 
     /**
      * Rings the alarm if the period that just ended is still unannounced. The
      * window is wider than the 2s the JS tick uses because this loop slows to
-     * 5s once the screen is asleep; the shared `weekday:periodId` dedupe in
+     * 5s once the screen is asleep; the shared date-scoped dedupe in
      * EndAlertNotifier keeps this and the exact alarm from ringing twice.
      */
     private fun ringIfPeriodJustEnded(snapshot: TimelineSnapshot, lookup: Lookup, now: Long) {
@@ -124,7 +151,7 @@ class PeriodForegroundService : Service() {
         } else {
             OngoingNotifier.composeIdle(this)
         }
-        startForeground(OngoingNotifier.NOTIFICATION_ID, notification)
+        startForegroundTyped(notification)
     }
 
     /** Battery-friendly: 1s while the screen is on, 5s once it's asleep. */

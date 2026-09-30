@@ -29,7 +29,7 @@ describe("CheckForPeriodEndUseCase", () => {
     expect(result.justEnded).toBe(true);
     expect(result.periodName).toBe("Math");
     expect(sound.playCount).toBe(1);
-    expect(repo.load().lastNotifiedKey).toBe("0:p1");
+    expect(repo.load().lastNotifiedKey).toBe("2026-09-20:p1");
   });
 
   test("does not refire on later ticks", async () => {

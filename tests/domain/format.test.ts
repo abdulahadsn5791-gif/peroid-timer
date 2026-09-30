@@ -33,27 +33,28 @@ describe("Formatting", () => {
 describe("periodJustEnded", () => {
   const period = createPeriod("p1", "Math", "08:00", "08:30");
   const end = 8 * 60 * 60 + 30 * 60;
+  const DATE = "2026-09-30";
 
-  test("fires exactly once inside the 2s window, with weekday-scoped key", () => {
-    expect(periodJustEnded([period], end, null, 4)).toEqual({
+  test("fires exactly once inside the 2s window, with date-scoped key", () => {
+    expect(periodJustEnded([period], end, null, DATE)).toEqual({
       periodId: "p1",
       periodName: "Math",
-      notifyKey: "4:p1",
+      notifyKey: `${DATE}:p1`,
     });
-    expect(periodJustEnded([period], end + 1, null, 4)).toEqual({
+    expect(periodJustEnded([period], end + 1, null, DATE)).toEqual({
       periodId: "p1",
       periodName: "Math",
-      notifyKey: "4:p1",
+      notifyKey: `${DATE}:p1`,
     });
   });
 
   test("does not refire after being notified, or outside the window", () => {
-    expect(periodJustEnded([period], end, "4:p1", 4)).toBeNull();
-    expect(periodJustEnded([period], end + 3, null, 4)).toBeNull();
-    expect(periodJustEnded([period], end - 1, null, 4)).toBeNull();
+    expect(periodJustEnded([period], end, `${DATE}:p1`, DATE)).toBeNull();
+    expect(periodJustEnded([period], end + 3, null, DATE)).toBeNull();
+    expect(periodJustEnded([period], end - 1, null, DATE)).toBeNull();
   });
 
-  test("another weekday is a fresh alert", () => {
-    expect(periodJustEnded([period], end, "4:p1", 5)).not.toBeNull();
+  test("another day is a fresh alert (the old key expires)", () => {
+    expect(periodJustEnded([period], end, "2026-09-29:p1", DATE)).not.toBeNull();
   });
 });

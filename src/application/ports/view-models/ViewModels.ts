@@ -45,6 +45,8 @@ export interface HomeView {
   weekday: number;
   /** True when today's preset has no lectures (empty preset). */
   isEmptyDay: boolean;
+  /** Clock ring size as a percent of the layout default: 60..130, 100 = auto. */
+  ringSizeScale: number;
   hasWallpaper: boolean;
   wallpaperUri: string | null;
   wallpaperBlur: number;
@@ -71,6 +73,8 @@ export interface PeriodDraftVM {
 export interface SettingsDraftVM {
   accentColor: string;
   paletteIndex: number;
+  /** Clock ring size as a percent of the layout default: 60..130. */
+  ringSizeScale: number;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   colorClock: boolean;

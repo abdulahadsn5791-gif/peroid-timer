@@ -13,10 +13,15 @@ import { toSeconds, minutesOfDayToLabel } from "../value-objects/TimeOfDay";
  * re-derives rules; the only arithmetic it performs is the time-relative piece
  * (remaining fraction at a given moment).
  *
- * Weekly timetables: the snapshot is always for ONE resolved day. `segments`
- * is empty exactly when that weekday has no lectures (an "empty preset") —
- * native then skips transition alarms and the live notification entirely, so
- * an empty day never beeps or buzzes.
+ * v7 — the WHOLE week, not one day. The old v6 snapshot described a single
+ * day, and every alarm was one-shot, so when Android killed the process
+ * overnight (normal, not a bug) nothing re-armed anything for the morning:
+ * widget, alarms and the live notification all stayed stale until the app was
+ * reopened. v7 carries `days` — 8 consecutive local midnights (today + the
+ * next 7) — so native code can arm every alarm for the whole horizon and
+ * re-arm itself at each midnight rollover without the app ever running.
+ * `segments` of one day is empty exactly when that weekday has no lectures
+ * (an "empty preset") — native then skips that day entirely.
  */
 export interface DayTimelineSegment {
   id: string;
@@ -31,12 +36,18 @@ export interface DayTimelineSegment {
   phaseTwoUntilRemaining: number;
 }
 
-export interface DayTimeline {
-  version: 6;
-  generatedAtUnixSec: number;
+/** One resolved day inside the week snapshot. */
+export interface DayTimelineEntry {
+  /** Local midnight (epoch sec) this entry describes. */
   boundaryUnixSec: number;
-  /** 0 = Sunday … 6 = Saturday — the weekday this snapshot is for. */
+  /** 0 = Sunday … 6 = Saturday — the weekday of this entry. */
   weekday: number;
+  segments: DayTimelineSegment[];
+}
+
+export interface DayTimeline {
+  version: 7;
+  generatedAtUnixSec: number;
   accentHex: string;
   /** Ring the end-of-period alarm at all. */
   soundEnabled: boolean;
@@ -45,28 +56,25 @@ export interface DayTimeline {
   colorNotification: boolean;
   /** Custom alarm ringtone (file/content URI); null/absent = built-in tone. */
   alarmSoundUri: string | null;
-  segments: DayTimelineSegment[];
+  days: DayTimelineEntry[];
 }
 
-/**
- * Builds the "what is true at time T" snapshot for one day. Boundaries in
- * seconds-of-day are mapped to absolute epoch seconds using the day boundary
- * provided by the clock adapter.
- */
-export function buildDayTimeline(
-  settings: Settings,
-  boundaryUnixSec: number,
-  nowEpochSec: number,
-  weekday?: number,
-): DayTimeline {
-  const resolvedWeekday = weekday ?? weekdayOf(new Date(nowEpochSec * 1000).getDay());
-  const periods = periodsFor(settings.weekSchedule, resolvedWeekday);
+/** How many consecutive days the snapshot covers: today + a full week. */
+export const SNAPSHOT_DAY_COUNT = 8;
+
+/** Local midnight `daysAhead` days after the given boundary (DST-correct). */
+function boundaryDaysAhead(boundaryUnixSec: number, daysAhead: number): { boundary: number; weekday: number } {
+  const d = new Date(boundaryUnixSec * 1000);
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + daysAhead);
+  return { boundary: Math.floor(m.getTime() / 1000), weekday: m.getDay() };
+}
+
+function segmentsForDay(settings: Settings, boundaryUnixSec: number, weekday: number): DayTimelineSegment[] {
+  const periods = periodsFor(settings.weekSchedule, weekday);
   const palette = paletteAt(settings.paletteIndex);
-  const segments: DayTimelineSegment[] = periods.map((p: Period) => {
-    const startMinutes = p.start.minutes;
-    const endMinutes = p.end.minutes;
-    const startUnixSec = boundaryUnixSec + startMinutes * 60;
-    const endUnixSec = boundaryUnixSec + endMinutes * 60;
+  return periods.map((p: Period) => {
+    const startUnixSec = boundaryUnixSec + p.start.minutes * 60;
+    const endUnixSec = boundaryUnixSec + p.end.minutes * 60;
     return {
       id: p.id,
       name: p.name,
@@ -80,18 +88,38 @@ export function buildDayTimeline(
       phaseTwoUntilRemaining: DEFAULT_PHASE_THRESHOLDS.phaseTwoUntilRemaining,
     };
   });
+}
+
+/**
+ * Builds the "what is true at time T" snapshot for the whole alarm horizon.
+ * Boundaries in seconds-of-day are mapped to absolute epoch seconds using
+ * local-midnight arithmetic derived from the day boundary provided by the
+ * clock adapter.
+ */
+export function buildDayTimeline(
+  settings: Settings,
+  boundaryUnixSec: number,
+  nowEpochSec: number,
+): DayTimeline {
+  const days: DayTimelineEntry[] = [];
+  for (let i = 0; i < SNAPSHOT_DAY_COUNT; i++) {
+    const { boundary, weekday } = boundaryDaysAhead(boundaryUnixSec, i);
+    days.push({
+      boundaryUnixSec: boundary,
+      weekday: weekdayOf(weekday),
+      segments: segmentsForDay(settings, boundary, weekday),
+    });
+  }
 
   return {
-    version: 6,
+    version: 7,
     generatedAtUnixSec: nowEpochSec,
-    boundaryUnixSec,
-    weekday: resolvedWeekday,
     accentHex: settings.accentColor,
     soundEnabled: settings.soundEnabled,
     notificationsEnabled: settings.notificationsEnabled,
     colorNotification: settings.colorNotification,
     alarmSoundUri: settings.alarmSoundUri ?? null,
-    segments,
+    days,
   };
 }
 

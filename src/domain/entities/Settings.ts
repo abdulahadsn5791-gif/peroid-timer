@@ -19,6 +19,8 @@ export interface Settings {
   weekSchedule: WeekSchedule;
   accentColor: AccentColor;
   paletteIndex: number;
+  /** Clock ring size as a percent of the layout default: 60..130, 100 = auto. */
+  ringSizeScale: number;
   colorClock: boolean;
   colorNotification: boolean;
   colorActiveBars: boolean;
@@ -40,6 +42,7 @@ export interface SettingsShape {
   periods?: Period[];
   accentColor?: AccentColor;
   paletteIndex?: number;
+  ringSizeScale?: number;
   colorClock?: boolean;
   colorNotification?: boolean;
   colorActiveBars?: boolean;
@@ -69,10 +72,13 @@ export function defaultSettings(): Settings {
     weekSchedule: defaultWeekSchedule(),
     accentColor: DEFAULT_ACCENT,
     paletteIndex: 0,
+    ringSizeScale: DEFAULT_RING_SIZE_SCALE,
     colorClock: false,
     colorNotification: false,
     colorActiveBars: true,
-    soundEnabled: true,
+    // Fresh installs ship with the alarm OFF: a new user should never get a
+    // surprise ring on day one — sound is an explicit opt-in in Settings.
+    soundEnabled: false,
     notificationsEnabled: true,
     alarmSoundUri: null,
     wallpaperBlur: 0,
@@ -93,6 +99,7 @@ export function settingsWith(overrides: SettingsShape): Settings {
     weekSchedule,
     accentColor: normalizeAccentColor(overrides.accentColor ?? base.accentColor),
     paletteIndex: overrides.paletteIndex ?? base.paletteIndex,
+    ringSizeScale: clampRingSizeScale(overrides.ringSizeScale ?? base.ringSizeScale),
     colorClock: overrides.colorClock ?? base.colorClock,
     colorNotification: overrides.colorNotification ?? base.colorNotification,
     colorActiveBars: overrides.colorActiveBars ?? base.colorActiveBars,
@@ -109,6 +116,16 @@ export function settingsWith(overrides: SettingsShape): Settings {
 export function clampBlur(blur: number): number {
   if (!Number.isFinite(blur)) return 0;
   return Math.max(0, Math.min(100, Math.round(blur)));
+}
+
+/** Bounds of the clock ring size slider: 60% … 130% of the layout default. */
+export const RING_SIZE_MIN = 60;
+export const RING_SIZE_MAX = 130;
+export const DEFAULT_RING_SIZE_SCALE = 100;
+
+export function clampRingSizeScale(scale: number): number {
+  if (!Number.isFinite(scale)) return DEFAULT_RING_SIZE_SCALE;
+  return Math.max(RING_SIZE_MIN, Math.min(RING_SIZE_MAX, Math.round(scale)));
 }
 
 export function normalizeSettings(shape: Partial<SettingsShape> | null | undefined): Settings {

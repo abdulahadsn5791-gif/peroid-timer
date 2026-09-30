@@ -11,7 +11,10 @@ describe("Settings", () => {
     expect(s.accentColor).toBe(DEFAULT_ACCENT);
     expect(s.paletteIndex).toBe(0);
     expect(s.colorClock).toBe(false);
-    expect(s.soundEnabled).toBe(true);
+    // Fresh installs ship with the alarm sound OFF — no surprise ring on day one.
+    expect(s.soundEnabled).toBe(false);
+    expect(s.notificationsEnabled).toBe(true);
+    expect(s.ringSizeScale).toBe(100);
     expect(s.alarmSoundUri).toBeNull();
     expect(s.wallpaperUri).toBeNull();
     expect(s.lastNotifiedKey).toBeNull();
@@ -20,7 +23,8 @@ describe("Settings", () => {
   test("normalizeSettings fills every missing field", () => {
     const s = normalizeSettings({});
     expect(s.weekSchedule).toHaveLength(7);
-    expect(s.soundEnabled).toBe(true);
+    // Explicitly disabled sound stays disabled (normalize never re-enables).
+    expect(s.soundEnabled).toBe(false);
     expect(s.wallpaperUri).toBeNull();
     expect(normalizeSettings(null)).toEqual(defaultSettings());
   });
@@ -33,7 +37,16 @@ describe("Settings", () => {
   test("settingsWith merges only provided overrides", () => {
     const s = settingsWith({});
     expect(s.accentColor).toBe(DEFAULT_ACCENT);
-    expect(s.soundEnabled).toBe(true);
+    // The fresh-install default is alarm OFF; an explicit true stays true.
+    expect(s.soundEnabled).toBe(false);
+    expect(settingsWith({ soundEnabled: true }).soundEnabled).toBe(true);
+  });
+
+  test("ringSizeScale clamps to 60–130 and rounds", () => {
+    expect(settingsWith({ ringSizeScale: 10 }).ringSizeScale).toBe(60);
+    expect(settingsWith({ ringSizeScale: 500 }).ringSizeScale).toBe(130);
+    expect(settingsWith({ ringSizeScale: 87.4 }).ringSizeScale).toBe(87);
+    expect(settingsWith({ ringSizeScale: NaN }).ringSizeScale).toBe(100);
   });
 
   test("alarmSoundUri accepts only file/content URIs", () => {

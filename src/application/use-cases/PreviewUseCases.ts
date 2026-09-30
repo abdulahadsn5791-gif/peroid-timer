@@ -6,6 +6,7 @@ import type {
   PreviewColorActiveBarsPort,
   PreviewNotificationsPort,
   PreviewPalettePort,
+  PreviewRingSizePort,
   PreviewSoundPort,
   PreviewThemePort,
   PreviewWallpaperBlurPort,
@@ -31,6 +32,15 @@ export class PreviewAccentUseCase implements PreviewAccentPort {
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
   preview(hex: string): SettingsDraftVM {
     this.draftStore.setAccent(hex);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates the clock ring size (60–130% of the layout default). */
+export class PreviewRingSizeUseCase implements PreviewRingSizePort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(scale: number): SettingsDraftVM {
+    this.draftStore.setRingSizeScale(scale);
     return vm(this.draftStore, this.wallpaper);
   }
 }

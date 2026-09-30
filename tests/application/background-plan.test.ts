@@ -23,14 +23,14 @@ describe("Background plan", () => {
     const planner = new BackgroundPlanner(clock, snapshot, alerts);
     await planner.apply(repo.load());
 
-    expect(snapshot.last?.version).toBe(6);
-    expect(snapshot.last?.weekday).toBe(clock.todayParts().weekday);
-    expect(snapshot.last?.boundaryUnixSec).toBe(clock.todayBoundaryEpochSec());
+    expect(snapshot.last?.version).toBe(7);
+    expect(snapshot.last?.days).toHaveLength(8);
+    expect(snapshot.last?.days[0].weekday).toBe(clock.todayParts().weekday);
     expect(alerts.scheduled).toHaveLength(1);
     expect(alerts.endAlerts).toHaveLength(1);
     expect(alerts.startLiveCalls).toBe(1);
     expect(alerts.stopLiveCalls).toBe(0);
-    expect(snapshot.last?.segments[0].startUnixSec).toBe(
+    expect(snapshot.last?.days[0].segments[0].startUnixSec).toBe(
       clock.todayBoundaryEpochSec() + (8 * 60 + 30) * 60,
     );
   });
@@ -59,10 +59,10 @@ describe("Background plan", () => {
     const planner = new BackgroundPlanner(clock, snapshot, alerts);
     await planner.apply(repo.load());
 
-    expect(snapshot.last?.segments).toHaveLength(0);
-    expect(snapshot.last?.weekday).toBe(today);
+    expect(snapshot.last?.days[0].segments).toHaveLength(0);
+    expect(snapshot.last?.days[0].weekday).toBe(today);
     expect(alerts.stopLiveCalls).toBe(1);
     expect(alerts.startLiveCalls).toBe(0);
-    expect(alerts.endAlerts[0]?.segments).toHaveLength(0);
+    expect(alerts.endAlerts[0]?.days[0].segments).toHaveLength(0);
   });
 });

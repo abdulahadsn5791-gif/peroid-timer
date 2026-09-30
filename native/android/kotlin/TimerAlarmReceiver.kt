@@ -5,11 +5,12 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Fires on each scheduled transition (start or end of a segment) and on each
+ * Fires on each scheduled transition (start or end of a segment), on each
  * end-of-period ALARM — even when the app process and its JS are backgrounded
- * or dead. Keeps the widget fresh, re-arms the live notification service,
- * rings the end-of-period alarm, and converges inexact alarms. This receiver
- * has no schedule rules of its own; everything is a snapshot lookup.
+ * or dead — and once every night at 00:00 to re-arm the whole week. Keeps the
+ * widget fresh, re-arms the live notification service, rings the end-of-period
+ * alarm, and converges inexact alarms. This receiver has no schedule rules of
+ * its own; everything is a snapshot lookup.
  */
 class TimerAlarmReceiver : BroadcastReceiver() {
 
@@ -28,6 +29,7 @@ class TimerAlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             AlarmSchedulerCore.ACTION_END_ALERT -> onEndAlert(context, snapshot, intent, now)
+            AlarmSchedulerCore.ACTION_ROLLOVER -> onRollover(context, snapshot, now)
             else -> onTransition(context, snapshot, now)
         }
     }
@@ -51,17 +53,44 @@ class TimerAlarmReceiver : BroadcastReceiver() {
 
     /**
      * The loud end-of-period alert, on an exact alarm. The ringing decision,
-     * both toggles and the `weekday:periodId` dedupe all live in
+     * both toggles and the date-scoped dedupe all live in
      * EndAlertNotifier.ringIfJustEnded, which the foreground service calls too —
      * so whichever watcher gets there first rings and the other is a no-op, and
      * a repeated delivery (inexact alarm retry, a service tick) can never ring
-     * twice. Weekly presets rotate the weekday inside the key, so the same
-     * period rings again tomorrow.
+     * twice. The date key rotates per calendar day, so the same period rings
+     * again on its next occurrence.
      */
     private fun onEndAlert(context: Context, snapshot: TimelineSnapshot, intent: Intent, now: Long) {
         val segId = intent.getStringExtra(AlarmSchedulerCore.EXTRA_SEGMENT_ID) ?: return
         val ended = snapshot.segments.firstOrNull { it.id == segId } ?: return
-        EndAlertNotifier.ringIfJustEnded(context, snapshot, ended, SnapshotStore.lookup(snapshot, now).next, now)
+        EndAlertNotifier.ringIfJustEnded(
+            context,
+            snapshot,
+            ended,
+            SnapshotStore.lookup(snapshot, now).next,
+            now,
+        )
+    }
+
+    /**
+     * Midnight rollover: the nightly self-rearm. Cancels everything, then
+     * re-arms the remaining days of the snapshot horizon straight from the
+     * file the app last wrote — no app process needed. This is the fix for the
+     * stale widget/dead alarms overnight: the v6 build only ever re-armed from
+     * the app itself, so one process death froze everything until reopen.
+     *
+     * The snapshot horizon is 8 days and the rollover re-arms every night, so
+     * the future days it arms are always at most one day stale — and every app
+     * open/save/boot refreshes the horizon anyway.
+     */
+    private fun onRollover(context: Context, snapshot: TimelineSnapshot, now: Long) {
+        AlarmSchedulerCore.scheduleAll(context, snapshot)
+        AlarmSchedulerCore.scheduleEndAlerts(context, snapshot)
+        TimerWidgetProvider.requestUpdate(context)
+        val lookup = SnapshotStore.lookup(snapshot, now)
+        if (lookup.current != null || lookup.next != null) {
+            PeriodTimerSchedulerModule.startForegroundServiceSafe(context)
+        }
     }
 
     private fun onTransition(context: Context, snapshot: TimelineSnapshot, now: Long) {

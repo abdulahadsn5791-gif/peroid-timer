@@ -91,7 +91,10 @@ object EndAlertNotifier {
         if (snapshot.segments.isEmpty()) return false // empty preset day: never ring
         if (!snapshot.soundEnabled && !snapshot.notificationsEnabled) return false
 
-        val key = "${snapshot.weekday}:${ended.id}"
+        // Date-scoped key ("YYYY-MM-DD:periodId"): the old weekday-only key
+        // never expired, so the same period was silently suppressed a week
+        // later. A date key expires naturally — each new day is a fresh alert.
+        val key = "${SnapshotStore.dateKeyOf(ended)}:${ended.id}"
         if (SnapshotStore.lastNotifiedKey(context) == key) return false
         SnapshotStore.setLastNotifiedKey(context, key)
 

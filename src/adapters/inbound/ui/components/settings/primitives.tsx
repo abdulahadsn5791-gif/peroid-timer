@@ -13,6 +13,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 import { BlurTargetView, BlurView } from "expo-blur";
 import { tokens, themePalette, type ThemeName, type ThemePalette } from "../../design-system/tokens";
+import { RING_SIZE_MAX, RING_SIZE_MIN } from "@domain/entities/Settings";
 import { PressableScale } from "../PressableScale";
 import { Toggle } from "../Toggle";
 import { minutesOfDayToLabel, minutesToHour12, toHHMM } from "@domain/value-objects/TimeOfDay";
@@ -244,18 +245,20 @@ export function WeekdayTabs({
 }
 
 // ---------------------------------------------------------------------------
-// Blur slider
+// Drag slider (shared drag engine; BlurSlider and RingSizeSlider are presets)
 // ---------------------------------------------------------------------------
 
-export function BlurSlider({
-  value,
-  accent,
-  onValueChange,
-}: {
+interface DragSliderProps {
   value: number;
+  /** Slider domain: value maps to (value - min) / (max - min) of the track. */
+  min: number;
+  max: number;
   accent: string;
+  accessibilityLabel: string;
   onValueChange: (v: number) => void;
-}) {
+}
+
+function DragSlider({ value, min, max, accent, accessibilityLabel, onValueChange }: DragSliderProps) {
   const trackRef = useRef<RNView | null>(null);
   const widthRef = useRef(1);
   const pageXRef = useRef(0);
@@ -263,9 +266,10 @@ export function BlurSlider({
   const valueFromX = useCallback(
     (x: number): number => {
       const w = widthRef.current || 1;
-      return Math.max(0, Math.min(100, Math.round((x / w) * 100)));
+      const fraction = Math.max(0, Math.min(1, x / w));
+      return Math.round(min + fraction * (max - min));
     },
-    [],
+    [min, max],
   );
 
   const panResponder = useMemo(
@@ -285,6 +289,9 @@ export function BlurSlider({
   );
 
   const pal = usePal();
+  const span = max - min;
+  const fillPct = Math.max(0, Math.min(100, ((value - min) / span) * 100));
+  const clampStep = (v: number) => Math.max(min, Math.min(max, v));
   return (
     <View
       ref={trackRef}
@@ -295,20 +302,64 @@ export function BlurSlider({
       style={[styles.sliderTrack, { backgroundColor: pal.inputBg }]}
       accessible
       accessibilityRole="adjustable"
-      accessibilityLabel="Wallpaper blur"
-      accessibilityValue={{ min: 0, max: 100, now: value }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityValue={{ min, max, now: value }}
       accessibilityActions={[
-        { name: "increment", label: "Increase blur" },
-        { name: "decrement", label: "Decrease blur" },
+        { name: "increment", label: "Increase" },
+        { name: "decrement", label: "Decrease" },
       ]}
       onAccessibilityAction={(e) => {
-        if (e.nativeEvent.actionName === "increment") onValueChange(Math.min(100, value + 10));
-        else if (e.nativeEvent.actionName === "decrement") onValueChange(Math.max(0, value - 10));
+        if (e.nativeEvent.actionName === "increment") onValueChange(clampStep(value + 5));
+        else if (e.nativeEvent.actionName === "decrement") onValueChange(clampStep(value - 5));
       }}
     >
-      <View style={[styles.sliderTrackFill, { width: `${value}%`, backgroundColor: accent }]} />
-      <View style={[styles.sliderThumb, { left: `${value}%` }]} />
+      <View style={[styles.sliderTrackFill, { width: `${fillPct}%`, backgroundColor: accent }]} />
+      <View style={[styles.sliderThumb, { left: `${fillPct}%` }]} />
     </View>
+  );
+}
+
+/** Wallpaper blur, 0–100. */
+export function BlurSlider({
+  value,
+  accent,
+  onValueChange,
+}: {
+  value: number;
+  accent: string;
+  onValueChange: (v: number) => void;
+}) {
+  return (
+    <DragSlider
+      value={value}
+      min={0}
+      max={100}
+      accent={accent}
+      accessibilityLabel="Wallpaper blur"
+      onValueChange={onValueChange}
+    />
+  );
+}
+
+/** Clock ring size, 60–130% of the layout default. */
+export function RingSizeSlider({
+  value,
+  accent,
+  onValueChange,
+}: {
+  value: number;
+  accent: string;
+  onValueChange: (v: number) => void;
+}) {
+  return (
+    <DragSlider
+      value={value}
+      min={RING_SIZE_MIN}
+      max={RING_SIZE_MAX}
+      accent={accent}
+      accessibilityLabel="Clock ring size"
+      onValueChange={onValueChange}
+    />
   );
 }
 

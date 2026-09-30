@@ -41,6 +41,8 @@ export interface AppDeps {
  */
 export interface SettingsActions {
   previewPalette(index: number): void;
+  /** Live-updates the clock ring size (60–130% of the layout default). */
+  previewRingSize(scale: number): void;
   previewAccent(hex: string): void;
   previewColorClock(enabled: boolean): void;
   previewColorNotification(enabled: boolean): void;

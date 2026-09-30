@@ -35,6 +35,8 @@ class TimerBootReceiver : BroadcastReceiver() {
         val lookup = SnapshotStore.lookup(snapshot, now)
         if (lookup.current != null || lookup.next != null) {
             PeriodTimerSchedulerModule.startForegroundServiceSafe(context)
+        } else {
+            PeriodTimerSchedulerModule.stopLiveSafe(context)
         }
         TimerWidgetProvider.requestUpdate(context)
     }

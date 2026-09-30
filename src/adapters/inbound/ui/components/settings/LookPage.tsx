@@ -15,10 +15,12 @@ import {
   Hint,
   PageBody,
   PageScroll,
+  RingSizeSlider,
   SectionHeader,
   ToggleRow,
   WallpaperPreview,
 } from "./primitives";
+import { RING_SIZE_MAX, RING_SIZE_MIN } from "@domain/entities/Settings";
 
 interface Props {
   draft: SettingsDraftVM;
@@ -64,6 +66,20 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           </View>
         </Card>
         <Hint>The home screen flips between the white and the dark look live as you toggle.</Hint>
+
+        <SectionHeader title="Clock ring size" subtitle="How large the timer ring renders on the home screen" />
+        <Card style={styles.looseCard}>
+          <Text style={styles.sliderLabel}>Size {draft.ringSizeScale}%{draft.ringSizeScale === 100 ? " (default)" : ""}</Text>
+          <RingSizeSlider
+            value={draft.ringSizeScale}
+            accent={accent}
+            onValueChange={(v) => actions.previewRingSize(v)}
+          />
+          <Text style={styles.sliderHint}>
+            Drag to resize the clock ring — smaller fits more of the list, larger is easier to read.
+            {RING_SIZE_MIN}–{RING_SIZE_MAX}%.
+          </Text>
+        </Card>
 
         <SectionHeader title="App background" subtitle="Wallpaper behind the home screen only" />
         <Card>

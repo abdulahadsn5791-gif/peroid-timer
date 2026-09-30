@@ -39,7 +39,22 @@ class TimerWidgetProvider : AppWidgetProvider() {
             )
             if (ids.isEmpty()) return
 
-            val snapshot = SnapshotStore.load(context) ?: return
+            val snapshot = SnapshotStore.load(context)
+            if (snapshot == null) {
+                // No snapshot (fresh install, storage cleared): show a real
+                // state instead of whatever was rendered last — a stale
+                // "frozen countdown" is worse than an honest empty state.
+                for (id in ids) {
+                    val views = RemoteViews(context.packageName, R.layout.timer_widget)
+                    views.setTextViewText(R.id.widget_name, "Period Timer")
+                    views.setTextViewText(R.id.widget_countdown, "—")
+                    views.setTextViewText(R.id.widget_status, "Open the app to set up")
+                    views.setInt(R.id.widget_progress, "setProgress", 0)
+                    views.setInt(R.id.widget_accent_dot, "setColorFilter", GRAY)
+                    manager.updateAppWidget(id, views)
+                }
+                return
+            }
             val lookup = SnapshotStore.lookup(snapshot, System.currentTimeMillis() / 1000L)
 
             val views = RemoteViews(context.packageName, R.layout.timer_widget)

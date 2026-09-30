@@ -30,6 +30,7 @@ import {
   PreviewColorActiveBarsUseCase,
   PreviewNotificationsUseCase,
   PreviewPaletteUseCase,
+  PreviewRingSizeUseCase,
   PreviewSoundUseCase,
   PreviewThemeUseCase,
   PreviewWallpaperBlurUseCase,
@@ -161,6 +162,7 @@ export function createApp(): AppDeps {
   const getHomeView = new GetHomeViewUseCase(clock, settingsRepository, wallpaperStore, draftStore);
   const openSettings = new OpenSettingsUseCase(settingsRepository, wallpaperStore, draftStore);
   const previewPalette = new PreviewPaletteUseCase(draftStore, wallpaperStore);
+  const previewRingSize = new PreviewRingSizeUseCase(draftStore, wallpaperStore);
   const previewAccent = new PreviewAccentUseCase(draftStore, wallpaperStore);
   const previewColorClock = new PreviewColorClockUseCase(draftStore, wallpaperStore);
   const previewColorNotification = new PreviewColorNotificationUseCase(draftStore, wallpaperStore);
@@ -191,6 +193,7 @@ export function createApp(): AppDeps {
 
   const settingsActions: SettingsActions = {
     previewPalette: (i) => void previewPalette.preview(i),
+    previewRingSize: (scale) => void previewRingSize.preview(scale),
     previewAccent: (hex) => void previewAccent.preview(hex),
     previewColorClock: (b) => void previewColorClock.preview(b),
     previewColorNotification: (b) => void previewColorNotification.preview(b),

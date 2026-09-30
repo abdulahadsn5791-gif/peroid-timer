@@ -10,9 +10,13 @@ import java.io.File
  * folder. This is data only — schedule *rules* never exist on the native side,
  * only "what is true at time T" lookups against these numbers.
  *
- * v6: weekly timetables. The snapshot always describes ONE resolved day;
- * an empty `segments` list means that weekday's preset is empty — no lectures,
- * so no alarms, no live notification, nothing rings that day.
+ * v7 — WHOLE WEEK. The old v6 snapshot described one day, and every alarm was
+ * one-shot: when Android killed the process overnight (normal, not a bug),
+ * nothing re-armed anything for the morning — the widget, the alarms and the
+ * live notification all showed stale data until the app was reopened. v7
+ * carries `days` — 8 consecutive local midnights — so the native side can arm
+ * every alarm for the whole horizon and re-arm itself at each midnight
+ * rollover (AlarmSchedulerCore.scheduleRolloverAlarm) with no app process.
  * `alarmSoundUri` carries the user's custom ringtone; null/absent = built-in.
  * `soundEnabled` rings the alarm, `notificationsEnabled` posts the alert;
  * either one off silences that half of the period-end alert.
@@ -51,18 +55,27 @@ data class SegmentSnapshot(
     }
 }
 
+/** One resolved day inside the week snapshot. */
+data class DayEntry(
+    val boundaryUnixSec: Long,
+    val weekday: Int,
+    val segments: List<SegmentSnapshot>,
+)
+
 data class TimelineSnapshot(
     val version: Int,
     val generatedAtUnixSec: Long,
-    val boundaryUnixSec: Long,
-    val weekday: Int,
     val accentHex: String,
     val soundEnabled: Boolean,
     val notificationsEnabled: Boolean,
     val colorNotification: Boolean,
     val alarmSoundUri: String?,
-    val segments: List<SegmentSnapshot>,
-)
+    val days: List<DayEntry>,
+) {
+    /** All segments of all days, chronological by construction. */
+    val segments: List<SegmentSnapshot>
+        get() = days.flatMap { it.segments }
+}
 
 /** Everything known "at time T" — what native drawing/alert code may consume. */
 data class Lookup(
@@ -92,13 +105,22 @@ object SnapshotStore {
     }
 
     fun fromJson(o: JSONObject): TimelineSnapshot {
-        val segs = o.getJSONArray("segments")
-        val segments = (0 until segs.length()).map { i -> segmentFromJson(segs.getJSONObject(i)) }
+        val daysJson = o.optJSONArray("days")
+        val days: List<DayEntry> = if (daysJson != null) {
+            (0 until daysJson.length()).map { i -> dayFromJson(daysJson.getJSONObject(i)) }
+        } else {
+            // Back-compat: a v6 flat single-day snapshot maps to one entry.
+            listOf(
+                DayEntry(
+                    boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
+                    weekday = o.optInt("weekday", 0),
+                    segments = segmentListFromJson(o.getJSONArray("segments")),
+                ),
+            )
+        }
         return TimelineSnapshot(
-            version = o.optInt("version", 6),
+            version = o.optInt("version", 7),
             generatedAtUnixSec = o.optLong("generatedAtUnixSec", 0L),
-            boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
-            weekday = o.optInt("weekday", 0),
             accentHex = o.optString("accentHex", "#2563EB"),
             soundEnabled = o.optBoolean("soundEnabled", true),
             notificationsEnabled = o.optBoolean("notificationsEnabled", true),
@@ -107,9 +129,18 @@ object SnapshotStore {
                 o.getString("alarmSoundUri")
             else
                 null,
-            segments = segments,
+            days = days,
         )
     }
+
+    private fun dayFromJson(o: JSONObject): DayEntry = DayEntry(
+        boundaryUnixSec = o.optLong("boundaryUnixSec", 0L),
+        weekday = o.optInt("weekday", 0),
+        segments = segmentListFromJson(o.getJSONArray("segments")),
+    )
+
+    private fun segmentListFromJson(segs: JSONArray): List<SegmentSnapshot> =
+        (0 until segs.length()).map { i -> segmentFromJson(segs.getJSONObject(i)) }
 
     private fun segmentFromJson(o: JSONObject): SegmentSnapshot {
         val colorsJson = o.getJSONArray("colors")
@@ -135,29 +166,56 @@ object SnapshotStore {
         return seg.remainingFraction(nowUnixSec)
     }
 
+    /**
+     * "What is true at time T" across the whole snapshot horizon. The day for
+     * T is found by walking each day's segments in order; because every
+     * segment carries absolute epoch seconds, a lookup never needs to know
+     * which calendar day it is.
+     */
     fun lookup(s: TimelineSnapshot, now: Long): Lookup {
         var current: SegmentSnapshot? = null
-        var doneCount = 0
         var previous: SegmentSnapshot? = null
         var next: SegmentSnapshot? = null
+        var doneCount = 0
 
-        for (seg in s.segments) {
-            if (now < seg.startUnixSec) {
-                next = seg
-                break
+        loop@ for (day in s.days) {
+            for (seg in day.segments) {
+                when {
+                    now < seg.startUnixSec -> {
+                        next = seg
+                        break@loop
+                    }
+                    now < seg.endUnixSec -> {
+                        current = seg
+                        break@loop
+                    }
+                    else -> {
+                        previous = seg
+                        doneCount++
+                    }
+                }
             }
-            if (now < seg.endUnixSec) {
-                current = seg
-                break
-            }
-            previous = seg
-            doneCount++
         }
-        // next may already be assigned; if the loop broke early it's correct.
         return Lookup(s, current, next, previous, doneCount, now)
     }
 
-    // --- per-day end-of-period alert dedupe ("weekday:periodId") ---
+    /**
+     * The next local midnight after `nowEpochSec`, computed with the same
+     * local-calendar arithmetic as the JS clock adapter — NOT a fixed 86400s
+     * add, which drifts across DST changes.
+     */
+    fun nextMidnightEpochSec(nowEpochSec: Long): Long {
+        val d = java.util.Calendar.getInstance()
+        d.timeInMillis = nowEpochSec * 1000L
+        d.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        d.set(java.util.Calendar.MINUTE, 0)
+        d.set(java.util.Calendar.SECOND, 0)
+        d.set(java.util.Calendar.MILLISECOND, 0)
+        d.add(java.util.Calendar.DAY_OF_MONTH, 1)
+        return d.timeInMillis / 1000L
+    }
+
+    // --- end-of-period alert dedupe ("YYYY-MM-DD:periodId") ---
 
     fun lastNotifiedKey(context: Context): String? {
         val file = File(context.filesDir, LAST_NOTIFIED_NAME)
@@ -176,6 +234,20 @@ object SnapshotStore {
             return
         }
         file.writeText(key)
+    }
+
+    /**
+     * "YYYY-MM-DD" of the day a segment belongs to, derived from its own
+     * start-second in local time — matches the JS-side date-scoped dedupe key
+     * and expires naturally, so the same period alerts again next week.
+     */
+    fun dateKeyOf(seg: SegmentSnapshot): String {
+        val d = java.util.Calendar.getInstance()
+        d.timeInMillis = seg.startUnixSec * 1000L
+        val y = d.get(java.util.Calendar.YEAR)
+        val m = d.get(java.util.Calendar.MONTH) + 1
+        val day = d.get(java.util.Calendar.DAY_OF_MONTH)
+        return "%04d-%02d-%02d".format(y, m, day)
     }
 
     // --- "Stop alarm" pressed natively, waiting for JS to silence its player ---

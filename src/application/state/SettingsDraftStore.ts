@@ -1,4 +1,10 @@
-import { clampBlur, normalizeSettings, type AppTheme, type Settings } from "@domain/entities/Settings";
+import {
+  clampBlur,
+  clampRingSizeScale,
+  normalizeSettings,
+  type AppTheme,
+  type Settings,
+} from "@domain/entities/Settings";
 import { clonePeriod, createPeriod, type Period } from "@domain/entities/Period";
 import {
   cloneWeekSchedule,
@@ -22,6 +28,8 @@ import { normalizeAccentColor } from "@domain/value-objects/AccentColor";
 export interface DraftSnapshot {
   accentColor: string;
   paletteIndex: number;
+  /** Clock ring size as a percent of the layout default: 60..130. */
+  ringSizeScale: number;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   colorClock: boolean;
@@ -62,6 +70,7 @@ export class SettingsDraftStore {
     return {
       accentColor: s.accentColor,
       paletteIndex: s.paletteIndex,
+      ringSizeScale: s.ringSizeScale,
       soundEnabled: s.soundEnabled,
       notificationsEnabled: s.notificationsEnabled,
       colorClock: s.colorClock,
@@ -134,6 +143,7 @@ export class SettingsDraftStore {
   effectiveOverrides(): {
     accentColor: string;
     paletteIndex: number;
+    ringSizeScale: number;
     colorClock: boolean;
     colorActiveBars: boolean;
     wallpaperBlur: number;
@@ -145,6 +155,7 @@ export class SettingsDraftStore {
     return {
       accentColor: this.draft.accentColor,
       paletteIndex: this.draft.paletteIndex,
+      ringSizeScale: this.draft.ringSizeScale,
       colorClock: this.draft.colorClock,
       colorActiveBars: this.draft.colorActiveBars,
       wallpaperBlur: this.draft.wallpaperBlur,
@@ -164,6 +175,12 @@ export class SettingsDraftStore {
 
   setPalette(index: number): void {
     this.draft.paletteIndex = index;
+    this.dirty = true;
+    this.notify();
+  }
+
+  setRingSizeScale(scale: number): void {
+    this.draft.ringSizeScale = clampRingSizeScale(scale);
     this.dirty = true;
     this.notify();
   }

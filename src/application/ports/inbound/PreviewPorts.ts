@@ -4,6 +4,10 @@ export interface PreviewPalettePort {
   preview(index: number): SettingsDraftVM;
 }
 
+export interface PreviewRingSizePort {
+  preview(scale: number): SettingsDraftVM;
+}
+
 export interface PreviewAccentPort {
   preview(hex: string): SettingsDraftVM;
 }

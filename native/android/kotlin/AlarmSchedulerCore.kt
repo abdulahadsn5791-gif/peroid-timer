@@ -9,18 +9,26 @@ import android.os.Build
 import android.provider.Settings
 
 /**
- * Warn: exact alarms on Android 12+ need the SCHEDULE_EXACT_ALARM runtime grant.
+ * Exact alarms on Android 12+ need the SCHEDULE_EXACT_ALARM runtime grant.
  * We always prefer exact (cheap, wakes at the transition) and fall back to
  * inexact alarms when the user hasn't granted access — the UI surface is the
- * same, timing can drift up to ~10 minutes on some devices.
+ * same, timing can drift up to ~10 minutes on the worst devices.
+ *
+ * Every set* call is wrapped in a SecurityException guard: access can be
+ * revoked between the canScheduleExactAlarms() check and the alarm call, and
+ * an uncaught SecurityException inside a receiver crashes the app.
  */
 object AlarmSchedulerCore {
     const val ACTION_ALARM = "com.periodtimer.ACTION_ALARM"
     const val ACTION_END_ALERT = "com.periodtimer.ACTION_END_ALERT"
+    const val ACTION_ROLLOVER = "com.periodtimer.ACTION_ROLLOVER"
     const val EXTRA_SEGMENT_ID = "segmentId"
     const val EXTRA_TRANSITION = "transition" // "start" | "end"
     const val EXTRA_AT_UNIX_SEC = "atUnixSec"
     const val EXTRA_PERIOD_NAME = "periodName"
+
+    private const val ROLLOVER_RC = 0x5B00
+    private val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     fun hasExactAlarmAccess(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
@@ -41,75 +49,104 @@ object AlarmSchedulerCore {
         }
     }
 
+    /**
+     * Arms the self-rearming 00:00 rollover: every night this fires, the
+     * receiver cancels stale alarms and re-arms the whole week from the
+     * snapshot. This is what keeps the widget, the alarms and the live
+     * notification correct with the app process long dead — the old build went
+     * stale exactly because only the app itself could re-arm anything.
+     */
+    fun scheduleRolloverAlarm(context: Context) {
+        val at = SnapshotStore.nextMidnightEpochSec(System.currentTimeMillis() / 1000L)
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pi = PendingIntent.getBroadcast(
+            context,
+            ROLLOVER_RC,
+            Intent(context, TimerAlarmReceiver::class.java).setAction(ACTION_ROLLOVER),
+            FLAGS,
+        )
+        setBestEffort(am, at * 1000L, pi)
+    }
+
+    /** Exact when allowed, inexact otherwise; never throws. */
+    private fun setBestEffort(am: AlarmManager, atMillis: Long, pi: PendingIntent) {
+        val exact = try {
+            hasExactAlarmAccessGuarded(am)
+        } catch (_: Exception) {
+            false
+        }
+        try {
+            if (exact) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
+            }
+        } catch (se: SecurityException) {
+            // Exact-alarm access revoked between the check and the call —
+            // degrade to inexact rather than crash inside the receiver.
+            runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi) }
+        }
+    }
+
+    private fun hasExactAlarmAccessGuarded(am: AlarmManager): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return am.canScheduleExactAlarms()
+    }
+
     /** Schedules one alarm (start or end of a segment) at the given epoch second. */
-    fun schedule(
-        context: Context,
-        segmentId: String,
-        transition: String,
-        atUnixSec: Long,
-    ) {
+    fun schedule(context: Context, segmentId: String, transition: String, atUnixSec: Long) {
         val atMillis = atUnixSec * 1000L
         if (atMillis - System.currentTimeMillis() < 1500L) return // already past
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = pendingIntent(context, segmentId, transition, atUnixSec)
-        val exact = hasExactAlarmAccess(context)
-        if (exact) {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
-        } else {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)
-        }
+        setBestEffort(am, atMillis, pi)
     }
 
-    /** Replaces all transition alarms with fresh ones derived from the snapshot. */
+    /**
+     * Replaces all transition + end-alert alarms with fresh ones derived from
+     * the WHOLE snapshot horizon (8 days), then arms the nightly rollover.
+     */
     fun scheduleAll(context: Context, snapshot: TimelineSnapshot): Int {
         cancelAll(context, snapshot)
         val now = System.currentTimeMillis() / 1000L
         var scheduled = 0
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (seg in snapshot.segments) {
             if (seg.startUnixSec > now) {
-                schedule(context, seg.id, "start", seg.startUnixSec)
+                setBestEffort(am, seg.startUnixSec * 1000L, pendingIntent(context, seg.id, "start", seg.startUnixSec))
                 scheduled++
             }
             if (seg.endUnixSec > now) {
-                schedule(context, seg.id, "end", seg.endUnixSec)
+                setBestEffort(am, seg.endUnixSec * 1000L, pendingIntent(context, seg.id, "end", seg.endUnixSec))
                 scheduled++
             }
         }
+        scheduleRolloverAlarm(context)
         return scheduled
     }
 
     /**
-     * Arms one "alarm clock" per period end: fires ACTION_END_ALERT, which
-     * rings the alarm ringtone and posts a heads-up notification — even when the
-     * app process is dead. The PendingIntent request code rotates per
-     * calendar day, so the same period id rings again on other weekdays of the
-     * weekly timetable instead of colliding with a stale PendingIntent.
-     *
-     * This is also where the alarm channel is published with the chosen
-     * ringtone: it runs whenever the app applies its day plan (boot, save,
-     * midnight) — the only moment a channel swap cannot race an alert into
-     * silence, because nothing is ringing yet.
+     * Arms one "alarm clock" per period end ACROSS ALL DAYS: fires
+     * ACTION_END_ALERT, which rings the alarm ringtone and posts a heads-up
+     * notification — even when the app process is dead. PendingIntent request
+     * codes are derived from segment id + fire time, so different days never
+     * collide, and a period id rings again on its next calendar day.
      */
     fun scheduleEndAlerts(context: Context, snapshot: TimelineSnapshot): Int {
         EndAlertNotifier.publishChannel(context, snapshot.alarmSoundUri)
         val now = System.currentTimeMillis() / 1000L
         var scheduled = 0
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (seg in snapshot.segments) {
             if (seg.endUnixSec <= now) continue
-            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val pi = endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec)
-            val exact = hasExactAlarmAccess(context)
-            if (exact) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, seg.endUnixSec * 1000L, pi)
-            } else {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, seg.endUnixSec * 1000L, pi)
-            }
+            setBestEffort(am, seg.endUnixSec * 1000L, endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec))
             scheduled++
         }
+        scheduleRolloverAlarm(context)
         return scheduled
     }
 
-    /** Cancels every transition alarm exactly as it was scheduled. */
+    /** Cancels every transition + end-alert alarm exactly as it was scheduled. */
     fun cancelAll(context: Context, snapshot: TimelineSnapshot) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (seg in snapshot.segments) {
@@ -134,7 +171,7 @@ object AlarmSchedulerCore {
             .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
         // One PendingIntent per (segment, transition) so cancellations don't collide.
         val code = (segId.hashCode() * 31 + transition.hashCode()) and 0x7fffffff
-        return PendingIntent.getBroadcast(context, code, intent, flags())
+        return PendingIntent.getBroadcast(context, code, intent, FLAGS)
     }
 
     private fun endAlertPendingIntent(
@@ -149,10 +186,6 @@ object AlarmSchedulerCore {
             .putExtra(EXTRA_PERIOD_NAME, periodName)
             .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
         val code = (segId.hashCode() * 31 + atUnixSec.toInt()) and 0x7fffffff
-        return PendingIntent.getBroadcast(context, code, intent, flags())
-    }
-
-    private fun flags(): Int {
-        return PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getBroadcast(context, code, intent, FLAGS)
     }
 }
