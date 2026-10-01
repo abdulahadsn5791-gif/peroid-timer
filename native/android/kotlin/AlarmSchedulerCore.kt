@@ -140,6 +140,11 @@ object AlarmSchedulerCore {
      * notification — even when the app process is dead. PendingIntent request
      * codes are derived from segment id + fire time, so different days never
      * collide, and a period id rings again on its next calendar day.
+     *
+     * This is the one native entry point every snapshot-apply path already
+     * calls (save, boot, rollover, module), so the upcoming-lecture reminder
+     * alarms are armed here too — arming them anywhere later would leave the
+     * feature silent until the next midnight rollover.
      */
     fun scheduleEndAlerts(context: Context, snapshot: TimelineSnapshot): Int {
         EndAlertNotifier.publishChannel(context, snapshot.alarmSoundUri)
@@ -151,6 +156,7 @@ object AlarmSchedulerCore {
             setBestEffort(am, seg.endUnixSec * 1000L, endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec))
             scheduled++
         }
+        UpcomingAlertNotifier.scheduleAll(context, snapshot)
         scheduleRolloverAlarm(context)
         return scheduled
     }
@@ -183,7 +189,7 @@ object AlarmSchedulerCore {
         return PendingIntent.getBroadcast(context, code, intent, FLAGS)
     }
 
-    /** Cancels every transition + end-alert alarm exactly as it was scheduled. */
+    /** Cancels every transition + end-alert + upcoming alarm exactly as it was scheduled. */
     fun cancelAll(context: Context, snapshot: TimelineSnapshot) {
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (seg in snapshot.segments) {
@@ -193,6 +199,7 @@ object AlarmSchedulerCore {
             }
             am.cancel(endAlertPendingIntent(context, seg.id, seg.name, seg.endUnixSec))
         }
+        UpcomingAlertNotifier.cancelAll(context, snapshot)
     }
 
     private fun pendingIntent(

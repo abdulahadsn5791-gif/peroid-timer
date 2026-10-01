@@ -106,7 +106,7 @@ export function DigitalClock({ vm, width, hasWallpaper, theme = "light" }: Props
         </Text>
       ) : null}
       {vm.indicator !== "idle" ? (
-        <View style={[styles.barTrack, { marginTop: 14 }]}>
+        <View style={[styles.barTrack, { backgroundColor: adaptive.ringTrack, marginTop: 14 }]}>
           <Animated.View style={[styles.barFill, { backgroundColor: vm.ringHex }, barStyle]} />
         </View>
       ) : null}
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.08)",
     overflow: "hidden",
   },
   barFill: { height: "100%", borderRadius: 2 },

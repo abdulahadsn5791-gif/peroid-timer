@@ -1,5 +1,6 @@
 package com.periodtimer
 
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -27,7 +28,6 @@ object UpcomingAlertNotifier {
         val leadSec = snapshot.upcomingAlertLeadSec
         if (leadSec <= 0L) return // feature off
         val now = System.currentTimeMillis() / 1000L
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (seg in snapshot.segments) {
             val at = seg.startUnixSec - leadSec
             if (at <= now) continue

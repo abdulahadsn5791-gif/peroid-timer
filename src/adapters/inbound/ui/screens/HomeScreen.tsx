@@ -170,7 +170,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
         active={flash.key > 0 && flash.periodName !== null}
         periodName={flash.periodName}
         flashKey={flash.key}
-        tint={view.ring.clockHex ?? view.accentHex}
+        tint={view.ring.ringHex}
       />
 
       {/* Full-screen opaque settings — no blur, so it never interacts with

@@ -124,6 +124,11 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         // Re-arm anything we just crossed so a slightly-delayed device still converges.
         if (!AlarmSchedulerCore.hasExactAlarmAccess(context)) {
             AlarmSchedulerCore.scheduleAll(context, snapshot)
+            // scheduleAll cancels upcoming alarms as part of its sweep; re-arm
+            // them here too — this convergence path does not run
+            // scheduleEndAlerts, and without this the reminders would die on
+            // devices without exact-alarm access.
+            UpcomingAlertNotifier.scheduleAll(context, snapshot)
         }
     }
 }
