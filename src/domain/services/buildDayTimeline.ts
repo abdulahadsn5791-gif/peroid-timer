@@ -4,6 +4,8 @@ import { periodsFor, weekdayOf } from "../entities/WeekSchedule";
 import type { PhaseColors } from "../value-objects/PhaseColor";
 import { DEFAULT_PHASE_THRESHOLDS } from "../value-objects/PhaseColor";
 import { paletteAt } from "../value-objects/RingPalette";
+import type { RingPalette } from "../value-objects/RingPalette";
+import { resolvePhaseColors } from "../value-objects/CustomColors";
 import { toSeconds, minutesOfDayToLabel } from "../value-objects/TimeOfDay";
 
 /**
@@ -36,6 +38,12 @@ export interface DayTimelineSegment {
   phaseTwoUntilRemaining: number;
 }
 
+/** A heads-up alert for the next lecture's start (lead time in seconds). */
+export interface UpcomingAlertSpec {
+  /** 0 = the feature is off (native side arms nothing). */
+  leadSec: number;
+}
+
 /** One resolved day inside the week snapshot. */
 export interface DayTimelineEntry {
   /** Local midnight (epoch sec) this entry describes. */
@@ -58,6 +66,8 @@ export interface DayTimeline {
   colorNotification: boolean;
   /** Custom alarm ringtone (file/content URI); null/absent = built-in tone. */
   alarmSoundUri: string | null;
+  /** Heads-up alert before the next lecture's start; leadSec 0 = off. */
+  upcomingAlert: UpcomingAlertSpec | null;
   days: DayTimelineEntry[];
 }
 
@@ -83,7 +93,14 @@ function boundaryDaysAhead(boundaryUnixSec: number, daysAhead: number): { bounda
 
 function segmentsForDay(settings: Settings, boundaryUnixSec: number, weekday: number): DayTimelineSegment[] {
   const periods = periodsFor(settings.weekSchedule, weekday);
-  const palette = paletteAt(settings.paletteIndex);
+  // The palette AND the user's custom per-phase overrides — the snapshot must
+  // carry exactly the colors the home ring renders, or the notification color
+  // disagrees with the ring. The old code sent only the bare palette, so any
+  // custom ring color was invisible in the notification.
+  const palette: RingPalette = {
+    ...paletteAt(settings.paletteIndex),
+    colors: resolvePhaseColors(settings.paletteIndex, settings.customRingColors),
+  };
   return periods.map((p: Period) => {
     const startUnixSec = boundaryUnixSec + p.start.minutes * 60;
     const endUnixSec = boundaryUnixSec + p.end.minutes * 60;
@@ -132,11 +149,14 @@ export function buildDayTimeline(
     notificationsEnabled: settings.notificationsEnabled,
     colorNotification: settings.colorNotification,
     alarmSoundUri: settings.alarmSoundUri ?? null,
+    upcomingAlert: settings.upcomingAlertHours > 0
+      ? { leadSec: settings.upcomingAlertHours * 3600 }
+      : null,
     days,
   };
 }
 
-export { toSeconds };
+export { toSeconds, paletteAt };
 export function secondsIntoDay(segment: DayTimelineSegment): { startSec: number; endSec: number } {
   return { startSec: segment.startUnixSec, endSec: segment.endUnixSec };
 }

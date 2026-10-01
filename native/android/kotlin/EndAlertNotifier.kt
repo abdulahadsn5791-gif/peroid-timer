@@ -146,7 +146,16 @@ object EndAlertNotifier {
     private fun post(context: Context, snapshot: TimelineSnapshot, ended: SegmentSnapshot, next: SegmentSnapshot?, now: Long) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val accent = compatColor(snapshot.accentHex, 0xFF2563EB.toInt())
+        // "Color the notification" — the same rule the live countdown uses:
+        // ON = the ring's final phase color for the period that just ended
+        // (phase 2, since it ended), OFF = the static accent. The snapshot's
+        // segment colors now mirror the app's ring palette *including the
+        // user's custom per-phase overrides*, so the alert matches the ring.
+        val accent = if (snapshot.colorNotification) {
+            compatColor(ended.color(now), 0xFF2563EB.toInt())
+        } else {
+            compatColor(snapshot.accentHex, 0xFF2563EB.toInt())
+        }
         val lines = buildString {
             appendLine("${ended.name} ended at ${ended.endLabel}")
             if (next != null) {

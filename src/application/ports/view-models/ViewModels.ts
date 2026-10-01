@@ -1,6 +1,6 @@
 import type { PhaseIndex } from "@domain/value-objects/PhaseColor";
 import type { CustomRingColors, HexColor } from "@domain/value-objects/CustomColors";
-import type { AppTheme } from "@domain/entities/Settings";
+import type { AppTheme, ClockStyle } from "@domain/entities/Settings";
 
 export type RowStatus = "passed" | "current" | "upcoming";
 
@@ -51,6 +51,10 @@ export interface HomeView {
   /** Flat home background when no wallpaper photo is set; null = theme default. */
   homeBgColor: HexColor | null;
   hasWallpaper: boolean;
+  /** Home timer look: the analog progress ring or big digital text. */
+  clockStyle: ClockStyle;
+  /** Whether the today's-schedule list renders under the home clock. */
+  showScheduleList: boolean;
   wallpaperUri: string | null;
   wallpaperBlur: number;
   /** Home look without a wallpaper; a wallpaper always uses frosted glass. */
@@ -84,6 +88,12 @@ export interface SettingsDraftVM {
   savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130. */
   ringSizeScale: number;
+  /** Home timer look: the analog progress ring or big digital text. */
+  clockStyle: ClockStyle;
+  /** Whether the today's-schedule list renders under the home clock. */
+  showScheduleList: boolean;
+  /** Upcoming-lecture alert lead time in hours; 0 = off. */
+  upcomingAlertHours: number;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   colorClock: boolean;

@@ -72,6 +72,8 @@ data class TimelineSnapshot(
     val notificationsEnabled: Boolean,
     val colorNotification: Boolean,
     val alarmSoundUri: String?,
+    /** Heads-up alert before the next lecture's start; null/leadSec 0 = off. */
+    val upcomingAlertLeadSec: Long,
     val days: List<DayEntry>,
 ) {
     /** All segments of all days, chronological by construction. */
@@ -156,6 +158,8 @@ object SnapshotStore {
                 o.getString("alarmSoundUri")
             else
                 null,
+            // "upcomingAlert": { leadSec } — absent or 0 = the feature is off.
+            upcomingAlertLeadSec = o.optJSONObject("upcomingAlert")?.optLong("leadSec", 0L) ?: 0L,
             days = days,
         )
     }
@@ -244,6 +248,28 @@ object SnapshotStore {
     }
 
     // --- end-of-period alert dedupe ("YYYY-MM-DD:periodId") ---
+
+    private const val UPCOMING_NAME = "period-timer-upcoming-notified.txt"
+
+    /** Dedupe key of the last posted upcoming-lecture alert ("dateKey:periodId"). */
+    fun lastUpcomingKey(context: Context): String? {
+        val file = File(context.filesDir, UPCOMING_NAME)
+        if (!file.exists()) return null
+        return try {
+            file.readText().trim().ifEmpty { null }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun setLastUpcomingKey(context: Context, key: String?) {
+        val file = File(context.filesDir, UPCOMING_NAME)
+        if (key == null) {
+            file.delete()
+            return
+        }
+        file.writeText(key)
+    }
 
     fun lastNotifiedKey(context: Context): String? {
         val file = File(context.filesDir, LAST_NOTIFIED_NAME)

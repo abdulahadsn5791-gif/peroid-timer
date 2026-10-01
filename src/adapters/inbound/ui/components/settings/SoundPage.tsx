@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { tokens } from "../../design-system/tokens";
 import type { SettingsActions } from "../../ports";
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
-import { Card, Hint, PageBody, PageScroll, Row, SectionHeader, ToggleRow, usePal } from "./primitives";
+import { UPCOMING_ALERT_MAX_HOURS } from "@domain/entities/Settings";
+import { Card, DragSlider, Hint, PageBody, PageScroll, Row, SectionHeader, ToggleRow, usePal } from "./primitives";
 import { PressableScale } from "../PressableScale";
 
 interface Props {
@@ -35,6 +36,34 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           </View>
         </Card>
         <Hint>Turn off to end the day completely in silence — no alert, no ringtone.</Hint>
+
+        <SectionHeader
+          title="Upcoming lecture alert"
+          subtitle="A heads-up notification before the next period starts"
+        />
+        <Card>
+          <View style={styles.toggleStack}>
+            <Text style={styles.sliderLabel}>
+              Remind me {draft.upcomingAlertHours === 0 ? "off" : `${draft.upcomingAlertHours}h before`}
+            </Text>
+            <DragSlider
+              value={draft.upcomingAlertHours}
+              min={0}
+              max={UPCOMING_ALERT_MAX_HOURS}
+              accent={accent}
+              accessibilityLabel="Upcoming lecture alert lead time in hours"
+              onValueChange={(v) => actions.previewUpcomingAlertHours(v)}
+            />
+            <Text style={styles.sliderHint}>
+              0 turns the upcoming alert off. 1 or 2 hours is typical — drag as far as
+              {` ${UPCOMING_ALERT_MAX_HOURS}`}h to get warned a full weekend ahead.
+            </Text>
+          </View>
+        </Card>
+        <Hint>
+          Fires once per lecture, at (start − lead time) — even when the app is closed. It follows
+          the period-end notification toggle above.
+        </Hint>
 
         <SectionHeader title="Sound" subtitle="What plays when a period ends" />
         <Card>
@@ -97,6 +126,15 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
 const styles = StyleSheet.create({
   toggleStack: {
     paddingVertical: tokens.spacing.xs,
+  },
+  sliderLabel: {
+    fontSize: tokens.text.subtext,
+    fontWeight: "600",
+    color: tokens.color.text.primary,
+  },
+  sliderHint: {
+    fontSize: tokens.text.micro,
+    color: tokens.color.text.tertiary,
   },
   pickBtn: {
     paddingHorizontal: tokens.spacing.md,

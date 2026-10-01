@@ -34,6 +34,11 @@ interface Props {
 
 type ExpandKey = "ring0" | "ring1" | "ring2" | "bg" | null;
 
+const CLOCK_STYLES: Array<{ value: "ring" | "digital"; label: string }> = [
+  { value: "ring", label: "Ring" },
+  { value: "digital", label: "Digital" },
+];
+
 /** Wallpaper, accent color, ring colors, home background and the toggles. */
 export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
   const accent = draft.accentColor;
@@ -75,6 +80,33 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           </View>
         </Card>
         <Hint>The home screen flips between the white and the dark look live as you toggle.</Hint>
+
+        <SectionHeader
+          title="Clock style"
+          subtitle="Ring with progress circle, or a big digital countdown"
+        />
+        <Card>
+          <View style={styles.segmentedWrap}>
+            <View style={[styles.segmentedRow, { backgroundColor: pal.inputBg }]}>
+              {CLOCK_STYLES.map((s) => {
+                const selected = draft.clockStyle === s.value;
+                return (
+                  <PressableScale
+                    key={s.value}
+                    onPress={() => actions.previewClockStyle(s.value)}
+                    haptic="selection"
+                    style={[styles.segmentBtn, selected && { backgroundColor: accent }]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{s.label}</Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+        </Card>
+        <Hint>Switches the home timer between the analog ring and the digital clock live.</Hint>
 
         <SectionHeader title="Clock ring size" subtitle="How large the timer ring renders on the home screen" />
         <Card style={styles.looseCard}>
@@ -224,6 +256,24 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
           Your custom colors replace the palette per phase; phases you leave on \"Use palette\"
           follow the selected palette above. Every picked color is saved to your swatches.
         </Hint>
+
+        <SectionHeader
+          title="Home layout"
+          subtitle="What renders below the clock"
+        />
+        <Card>
+          <View style={styles.toggleStack}>
+            <ToggleRow
+              label="Show today's schedule"
+              sublabel="Turn off to keep only the clock on the home screen"
+              value={draft.showScheduleList}
+              accent={accent}
+              onChange={(v) => actions.previewShowScheduleList(v)}
+              last
+            />
+          </View>
+        </Card>
+        <Hint>Hide the list and the home screen becomes just the clock ring (or digital clock).</Hint>
 
         <SectionHeader title="Colored elements" subtitle="Choose what the accent reaches" />
         <Card>

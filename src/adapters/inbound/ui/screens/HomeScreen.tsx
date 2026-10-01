@@ -15,6 +15,7 @@ import { BlurTargetView, BlurView } from "expo-blur";
 import { tokens, adaptiveColors, panelMaterial } from "../design-system/tokens";
 import { Header } from "../components/Header";
 import { Ring, ringSizeFor } from "../components/Ring";
+import { DigitalClock } from "../components/DigitalClock";
 import { ScheduleList } from "../components/ScheduleList";
 import { SettingsFlow } from "../components/settings/SettingsFlow";
 import { FlashLayer } from "../components/FlashLayer";
@@ -110,16 +111,25 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
 
           <View style={isWide ? styles.widePane : styles.narrowPane}>
             <Animated.View style={[styles.ringSlot, zoom, isWide && styles.wideRingSlot]}>
-              <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} theme={view.theme} />
+              {view.clockStyle === "digital" ? (
+                <DigitalClock
+                  vm={view.ring}
+                  width={isWide ? Math.min(width * 0.45, 480) : width - tokens.spacing.xl * 2}
+                  hasWallpaper={view.hasWallpaper}
+                  theme={view.theme}
+                />
+              ) : (
+                <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} theme={view.theme} />
+              )}
             </Animated.View>
-            {isWide ? (
+            {isWide && view.showScheduleList ? (
               <View style={{ flex: 1, paddingTop: 8 }}>
                 <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} />
               </View>
             ) : null}
           </View>
 
-          {!isWide ? (
+          {!isWide && view.showScheduleList ? (
             <View style={styles.narrowListWrap}>
               {view.isEmptyDay ? (
                 <View
@@ -160,6 +170,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
         active={flash.key > 0 && flash.periodName !== null}
         periodName={flash.periodName}
         flashKey={flash.key}
+        tint={view.ring.clockHex ?? view.accentHex}
       />
 
       {/* Full-screen opaque settings — no blur, so it never interacts with

@@ -21,6 +21,7 @@ import android.provider.Settings
 object AlarmSchedulerCore {
     const val ACTION_ALARM = "com.periodtimer.ACTION_ALARM"
     const val ACTION_END_ALERT = "com.periodtimer.ACTION_END_ALERT"
+    const val ACTION_UPCOMING = "com.periodtimer.ACTION_UPCOMING_ALERT"
     const val ACTION_ROLLOVER = "com.periodtimer.ACTION_ROLLOVER"
     const val EXTRA_SEGMENT_ID = "segmentId"
     const val EXTRA_TRANSITION = "transition" // "start" | "end"
@@ -88,6 +89,14 @@ object AlarmSchedulerCore {
         }
     }
 
+    /** setBestEffort for callers that only have a context (e.g. UpcomingAlertNotifier). */
+    private fun setBestEffortAm(context: Context, atUnixSec: Long, pi: PendingIntent) {
+        val atMillis = atUnixSec * 1000L
+        if (atMillis - System.currentTimeMillis() < 1500L) return // already past
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        setBestEffort(am, atMillis, pi)
+    }
+
     private fun hasExactAlarmAccessGuarded(am: AlarmManager): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         return am.canScheduleExactAlarms()
@@ -144,6 +153,34 @@ object AlarmSchedulerCore {
         }
         scheduleRolloverAlarm(context)
         return scheduled
+    }
+
+    /**
+     * Arms one silent reminder alarm per lecture start (minus lead time). The
+     * receiver posts the heads-up via UpcomingAlertNotifier.onAlarm.
+     */
+    fun scheduleUpcoming(
+        context: Context,
+        segId: String,
+        periodName: String,
+        atUnixSec: Long,
+    ) {
+        setBestEffortAm(context, atUnixSec, upcomingPendingIntent(context, segId, periodName, atUnixSec))
+    }
+
+    fun upcomingPendingIntent(
+        context: Context,
+        segId: String,
+        periodName: String,
+        atUnixSec: Long,
+    ): PendingIntent {
+        val intent = Intent(context, TimerAlarmReceiver::class.java)
+            .setAction(ACTION_UPCOMING)
+            .putExtra(EXTRA_SEGMENT_ID, segId)
+            .putExtra(EXTRA_PERIOD_NAME, periodName)
+            .putExtra(EXTRA_AT_UNIX_SEC, atUnixSec)
+        val code = (segId.hashCode() * 31 + "upcoming".hashCode() + atUnixSec.toInt()) and 0x7fffffff
+        return PendingIntent.getBroadcast(context, code, intent, FLAGS)
     }
 
     /** Cancels every transition + end-alert alarm exactly as it was scheduled. */

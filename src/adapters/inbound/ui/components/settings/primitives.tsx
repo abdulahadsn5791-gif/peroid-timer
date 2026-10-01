@@ -303,7 +303,12 @@ interface DragSliderProps {
   onValueChange: (v: number) => void;
 }
 
-function DragSlider({ value, min, max, accent, accessibilityLabel, onValueChange }: DragSliderProps) {
+/**
+ * Raw slider over an arbitrary integer domain — BlurSlider and RingSizeSlider
+ * are presets over it. Exported so pages can build domain sliders (e.g. the
+ * upcoming-lecture lead time in hours) with the same drag engine.
+ */
+export function DragSlider({ value, min, max, accent, accessibilityLabel, onValueChange }: DragSliderProps) {
   const trackRef = useRef<RNView | null>(null);
   const widthRef = useRef(1);
   const pageXRef = useRef(0);

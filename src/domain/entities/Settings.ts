@@ -23,6 +23,13 @@ export function normalizeTheme(value: unknown): AppTheme {
   return value === "dark" ? "dark" : "light";
 }
 
+/** How the home screen renders the live timer: the analog ring or big digital text. */
+export type ClockStyle = "ring" | "digital";
+
+export function normalizeClockStyle(value: unknown): ClockStyle {
+  return value === "digital" ? "digital" : "ring";
+}
+
 export interface Settings {
   /** One period list per weekday; an empty list = no lectures that day. */
   weekSchedule: WeekSchedule;
@@ -40,6 +47,10 @@ export interface Settings {
   savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130, 100 = auto. */
   ringSizeScale: number;
+  /** Home timer look: "ring" (analog progress circle) or "digital" (big text). */
+  clockStyle: ClockStyle;
+  /** Whether the today's-schedule list renders under the home clock. */
+  showScheduleList: boolean;
   colorClock: boolean;
   colorNotification: boolean;
   colorActiveBars: boolean;
@@ -51,6 +62,11 @@ export interface Settings {
   wallpaperUri: string | null;
   /** Base look for the no-wallpaper home screen (wallpaper mode stays glassy). */
   theme: AppTheme;
+  /**
+   * Hours before the next lecture's start for the heads-up "upcoming"
+   * notification; 0 = off. 1..100 (100 covers a weekend of notice).
+   */
+  upcomingAlertHours: number;
   /** "YYYY-MM-DD:periodId" of the last fired end-of-period alert (per-day dedupe). */
   lastNotifiedKey: string | null;
 }
@@ -65,6 +81,9 @@ export interface SettingsShape {
   homeBgColor?: HexColor | null;
   savedSwatches?: HexColor[];
   ringSizeScale?: number;
+  clockStyle?: ClockStyle;
+  showScheduleList?: boolean;
+  upcomingAlertHours?: number;
   colorClock?: boolean;
   colorNotification?: boolean;
   colorActiveBars?: boolean;
@@ -98,6 +117,9 @@ export function defaultSettings(): Settings {
     homeBgColor: null,
     savedSwatches: [...STARTER_SWATCHES],
     ringSizeScale: DEFAULT_RING_SIZE_SCALE,
+    clockStyle: "ring",
+    showScheduleList: true,
+    upcomingAlertHours: 0,
     colorClock: false,
     colorNotification: false,
     colorActiveBars: true,
@@ -131,6 +153,9 @@ export function settingsWith(overrides: SettingsShape): Settings {
         ? normalizeSavedSwatches(overrides.savedSwatches)
         : base.savedSwatches,
     ringSizeScale: clampRingSizeScale(overrides.ringSizeScale ?? base.ringSizeScale),
+    clockStyle: normalizeClockStyle(overrides.clockStyle ?? base.clockStyle),
+    showScheduleList: overrides.showScheduleList ?? base.showScheduleList,
+    upcomingAlertHours: clampUpcomingAlertHours(overrides.upcomingAlertHours ?? base.upcomingAlertHours),
     colorClock: overrides.colorClock ?? base.colorClock,
     colorNotification: overrides.colorNotification ?? base.colorNotification,
     colorActiveBars: overrides.colorActiveBars ?? base.colorActiveBars,
@@ -157,6 +182,14 @@ export const DEFAULT_RING_SIZE_SCALE = 100;
 export function clampRingSizeScale(scale: number): number {
   if (!Number.isFinite(scale)) return DEFAULT_RING_SIZE_SCALE;
   return Math.max(RING_SIZE_MIN, Math.min(RING_SIZE_MAX, Math.round(scale)));
+}
+
+/** Upcoming-lecture lead time: 0 = off, 1..100 hours before the next start. */
+export const UPCOMING_ALERT_MAX_HOURS = 100;
+
+export function clampUpcomingAlertHours(hours: number): number {
+  if (!Number.isFinite(hours)) return 0;
+  return Math.max(0, Math.min(UPCOMING_ALERT_MAX_HOURS, Math.round(hours)));
 }
 
 export function normalizeSettings(shape: Partial<SettingsShape> | null | undefined): Settings {

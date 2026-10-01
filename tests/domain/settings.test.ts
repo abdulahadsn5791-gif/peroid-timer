@@ -15,6 +15,9 @@ describe("Settings", () => {
     expect(s.soundEnabled).toBe(false);
     expect(s.notificationsEnabled).toBe(true);
     expect(s.ringSizeScale).toBe(100);
+    expect(s.clockStyle).toBe("ring");
+    expect(s.showScheduleList).toBe(true);
+    expect(s.upcomingAlertHours).toBe(0);
     expect(s.alarmSoundUri).toBeNull();
     expect(s.wallpaperUri).toBeNull();
     expect(s.lastNotifiedKey).toBeNull();
@@ -47,6 +50,22 @@ describe("Settings", () => {
     expect(settingsWith({ ringSizeScale: 500 }).ringSizeScale).toBe(130);
     expect(settingsWith({ ringSizeScale: 87.4 }).ringSizeScale).toBe(87);
     expect(settingsWith({ ringSizeScale: NaN }).ringSizeScale).toBe(100);
+  });
+
+  test("clockStyle accepts only ring | digital", () => {
+    expect(settingsWith({ clockStyle: "digital" }).clockStyle).toBe("digital");
+    expect(settingsWith({ clockStyle: "ring" }).clockStyle).toBe("ring");
+    expect(settingsWith({ clockStyle: "bogus" as never }).clockStyle).toBe("ring");
+  });
+
+  test("upcomingAlertHours clamps to 0–100 and rounds", () => {
+    expect(settingsWith({ upcomingAlertHours: 0 }).upcomingAlertHours).toBe(0);
+    expect(settingsWith({ upcomingAlertHours: 2 }).upcomingAlertHours).toBe(2);
+    expect(settingsWith({ upcomingAlertHours: 100 }).upcomingAlertHours).toBe(100);
+    expect(settingsWith({ upcomingAlertHours: 500 }).upcomingAlertHours).toBe(100);
+    expect(settingsWith({ upcomingAlertHours: -3 }).upcomingAlertHours).toBe(0);
+    expect(settingsWith({ upcomingAlertHours: 1.6 }).upcomingAlertHours).toBe(2);
+    expect(settingsWith({ upcomingAlertHours: NaN }).upcomingAlertHours).toBe(0);
   });
 
   test("alarmSoundUri accepts only file/content URIs", () => {

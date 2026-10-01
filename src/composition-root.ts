@@ -25,6 +25,9 @@ import { GetHomeViewUseCase } from "@application/use-cases/GetHomeViewUseCase";
 import { OpenSettingsUseCase } from "@application/use-cases/OpenSettingsUseCase";
 import {
   PreviewAccentUseCase,
+  PreviewClockStyleUseCase,
+  PreviewShowScheduleListUseCase,
+  PreviewUpcomingAlertHoursUseCase,
   PreviewColorClockUseCase,
   PreviewColorNotificationUseCase,
   PreviewColorActiveBarsUseCase,
@@ -174,6 +177,9 @@ export function createApp(): AppDeps {
   const previewHomeBgColor = new PreviewHomeBgColorUseCase(draftStore, wallpaperStore);
   const saveSwatch = new SaveSwatchUseCase(draftStore, wallpaperStore);
   const previewAccent = new PreviewAccentUseCase(draftStore, wallpaperStore);
+  const previewClockStyle = new PreviewClockStyleUseCase(draftStore, wallpaperStore);
+  const previewShowScheduleList = new PreviewShowScheduleListUseCase(draftStore, wallpaperStore);
+  const previewUpcomingAlertHours = new PreviewUpcomingAlertHoursUseCase(draftStore, wallpaperStore);
   const previewColorClock = new PreviewColorClockUseCase(draftStore, wallpaperStore);
   const previewColorNotification = new PreviewColorNotificationUseCase(draftStore, wallpaperStore);
   const previewColorActiveBars = new PreviewColorActiveBarsUseCase(draftStore, wallpaperStore);
@@ -208,6 +214,9 @@ export function createApp(): AppDeps {
     previewHomeBgColor: (hex) => void previewHomeBgColor.preview(hex),
     saveSwatch: (hex) => void saveSwatch.save(hex),
     previewAccent: (hex) => void previewAccent.preview(hex),
+    previewClockStyle: (style) => void previewClockStyle.preview(style),
+    previewShowScheduleList: (b) => void previewShowScheduleList.preview(b),
+    previewUpcomingAlertHours: (hours) => void previewUpcomingAlertHours.preview(hours),
     previewColorClock: (b) => void previewColorClock.preview(b),
     previewColorNotification: (b) => void previewColorNotification.preview(b),
     previewColorActiveBars: (b) => void previewColorActiveBars.preview(b),

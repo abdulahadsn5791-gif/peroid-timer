@@ -7,6 +7,8 @@ interface Props {
   active: boolean;
   periodName: string | null;
   flashKey: number;
+  /** Pulse tint from the ring's final phase color — matches the notification color. */
+  tint?: string;
 }
 
 /**
@@ -23,7 +25,7 @@ interface Props {
  * with it) about two seconds after the period ended. The toast now fades in on
  * its own and holds, staying readable and tappable until the alarm is stopped.
  */
-export function FlashLayer({ active, periodName, flashKey }: Props) {
+export function FlashLayer({ active, periodName, flashKey, tint }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
@@ -55,7 +57,7 @@ export function FlashLayer({ active, periodName, flashKey }: Props) {
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: tokens.color.danger, opacity: pulse },
+          { backgroundColor: tint ?? tokens.color.danger, opacity: pulse },
         ]}
       />
       {periodName ? (

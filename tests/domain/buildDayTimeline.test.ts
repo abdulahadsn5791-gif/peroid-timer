@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { buildDayTimeline, type DayTimeline } from "@domain/services/buildDayTimeline";
 import { settingsWith } from "@domain/entities/Settings";
 import { paletteAt } from "@domain/value-objects/RingPalette";
+import { DEFAULT_CUSTOM_RING_COLORS } from "@domain/value-objects/CustomColors";
 
 const BOUNDARY = Math.floor(new Date(2026, 8, 30).getTime() / 1000); // a real local midnight
 const NOW = BOUNDARY + 8 * 3600 + 45 * 60; // 08:45 of the boundary's day
@@ -19,6 +20,7 @@ describe("buildDayTimeline (snapshot v7)", () => {
     expect(tl.notificationsEnabled).toBe(true);
     expect(tl.colorNotification).toBe(false);
     expect(tl.alarmSoundUri).toBeNull();
+    expect(tl.upcomingAlert).toBeNull(); // feature default: off
     expect(tl.days[0].segments).toHaveLength(4);
 
     const first = tl.days[0].segments[0];
@@ -49,6 +51,27 @@ describe("buildDayTimeline (snapshot v7)", () => {
     );
     expect(neither.soundEnabled).toBe(false);
     expect(neither.notificationsEnabled).toBe(false);
+  });
+
+  test("segment colors include the user's custom per-phase overrides (ring <-> notification sync)", () => {
+    const settings = settingsWith({
+      customRingColors: { ...DEFAULT_CUSTOM_RING_COLORS, phase2: "#123456" },
+    });
+    const tl = buildDayTimeline(settings, BOUNDARY, NOW);
+    expect(tl.days[0].segments[0].colors).toEqual(["#2563EB", "#B45309", "#123456"]);
+    // The live notification path (native phase color(now)) reads these colors,
+    // so an override set in the app MUST change the notification color too.
+  });
+
+  test("upcomingAlert carries the lead time in seconds; 0 hours = off", () => {
+    const on = buildDayTimeline(settingsWith({ upcomingAlertHours: 2 }), BOUNDARY, NOW);
+    expect(on.upcomingAlert).toEqual({ leadSec: 2 * 3600 });
+
+    const max = buildDayTimeline(settingsWith({ upcomingAlertHours: 100 }), BOUNDARY, NOW);
+    expect(max.upcomingAlert).toEqual({ leadSec: 100 * 3600 });
+
+    const off = buildDayTimeline(settingsWith({ upcomingAlertHours: 0 }), BOUNDARY, NOW);
+    expect(off.upcomingAlert).toBeNull();
   });
 
   test("serializes to plain JSON the native side can parse", () => {

@@ -1,6 +1,7 @@
 import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels";
 import type {
   PreviewAccentPort,
+  PreviewClockStylePort,
   PreviewColorClockPort,
   PreviewColorNotificationPort,
   PreviewColorActiveBarsPort,
@@ -9,15 +10,17 @@ import type {
   PreviewPalettePort,
   PreviewRingPhaseColorPort,
   PreviewRingSizePort,
+  PreviewShowScheduleListPort,
   PreviewSoundPort,
   PreviewThemePort,
+  PreviewUpcomingAlertHoursPort,
   PreviewWallpaperBlurPort,
   SaveSwatchPort,
 } from "@application/ports/inbound/PreviewPorts";
 import type { WallpaperStorePort } from "@application/ports/outbound/WallpaperStorePort";
 import { SettingsDraftStore } from "@application/state/SettingsDraftStore";
 import { draftVmFromStore } from "./OpenSettingsUseCase";
-import { clampBlur } from "@domain/entities/Settings";
+import { clampBlur, type ClockStyle } from "@domain/entities/Settings";
 
 function vm(store: SettingsDraftStore, wallpaper: WallpaperStorePort): SettingsDraftVM {
   return draftVmFromStore(store, wallpaper);
@@ -71,6 +74,33 @@ export class SaveSwatchUseCase implements SaveSwatchPort {
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
   save(hex: string): SettingsDraftVM {
     this.draftStore.saveSwatch(hex);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates the home timer look (ring vs big digital clock). */
+export class PreviewClockStyleUseCase implements PreviewClockStylePort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(style: ClockStyle): SettingsDraftVM {
+    this.draftStore.setClockStyle(style);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates whether the today's-schedule list renders on the home screen. */
+export class PreviewShowScheduleListUseCase implements PreviewShowScheduleListPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(enabled: boolean): SettingsDraftVM {
+    this.draftStore.setShowScheduleList(enabled);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates the upcoming-lecture alert lead time in hours (0 = off). */
+export class PreviewUpcomingAlertHoursUseCase implements PreviewUpcomingAlertHoursPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(hours: number): SettingsDraftVM {
+    this.draftStore.setUpcomingAlertHours(hours);
     return vm(this.draftStore, this.wallpaper);
   }
 }

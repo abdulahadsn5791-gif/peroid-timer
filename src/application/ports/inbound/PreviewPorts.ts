@@ -31,6 +31,21 @@ export interface PreviewColorClockPort {
   preview(enabled: boolean): SettingsDraftVM;
 }
 
+/** Switches the home timer look between the ring and the digital clock. */
+export interface PreviewClockStylePort {
+  preview(style: "ring" | "digital"): SettingsDraftVM;
+}
+
+/** Shows/hides the today's-schedule list on the home screen. */
+export interface PreviewShowScheduleListPort {
+  preview(enabled: boolean): SettingsDraftVM;
+}
+
+/** Sets the upcoming-lecture alert lead time in hours (0 = off). */
+export interface PreviewUpcomingAlertHoursPort {
+  preview(hours: number): SettingsDraftVM;
+}
+
 export interface PreviewColorNotificationPort {
   preview(enabled: boolean): SettingsDraftVM;
 }

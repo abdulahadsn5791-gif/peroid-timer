@@ -29,6 +29,7 @@ class TimerAlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             AlarmSchedulerCore.ACTION_END_ALERT -> onEndAlert(context, snapshot, intent, now)
+            AlarmSchedulerCore.ACTION_UPCOMING -> onUpcomingAlert(context, snapshot, intent, now)
             AlarmSchedulerCore.ACTION_ROLLOVER -> onRollover(context, snapshot, now)
             else -> onTransition(context, snapshot, now)
         }
@@ -79,6 +80,18 @@ class TimerAlarmReceiver : BroadcastReceiver() {
     }
 
     /**
+     * The silent "upcoming lecture" heads-up, on an exact alarm leadSec before
+     * a lecture's start. All gating (feature off, notifications off, dedupe,
+     * already-started) lives in UpcomingAlertNotifier.onAlarm — the receiver
+     * only extracts the extras, mirroring onEndAlert.
+     */
+    private fun onUpcomingAlert(context: Context, snapshot: TimelineSnapshot, intent: Intent, now: Long) {
+        val segId = intent.getStringExtra(AlarmSchedulerCore.EXTRA_SEGMENT_ID) ?: return
+        val at = intent.getLongExtra(AlarmSchedulerCore.EXTRA_AT_UNIX_SEC, -1L)
+        UpcomingAlertNotifier.onAlarm(context, snapshot, segId, at)
+    }
+
+    /**
      * Midnight rollover: the nightly self-rearm. Cancels everything, then
      * re-arms the remaining days of the snapshot horizon straight from the
      * file the app last wrote — no app process needed. This is the fix for the
@@ -92,6 +105,7 @@ class TimerAlarmReceiver : BroadcastReceiver() {
     private fun onRollover(context: Context, snapshot: TimelineSnapshot, now: Long) {
         AlarmSchedulerCore.scheduleAll(context, snapshot)
         AlarmSchedulerCore.scheduleEndAlerts(context, snapshot)
+        UpcomingAlertNotifier.scheduleAll(context, snapshot)
         TimerWidgetProvider.requestUpdate(context)
         val lookup = SnapshotStore.lookup(snapshot, now)
         if (lookup.current != null || lookup.next != null) {

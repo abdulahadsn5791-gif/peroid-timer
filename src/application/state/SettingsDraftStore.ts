@@ -1,8 +1,10 @@
 import {
   clampBlur,
   clampRingSizeScale,
+  clampUpcomingAlertHours,
   normalizeSettings,
   type AppTheme,
+  type ClockStyle,
   type Settings,
 } from "@domain/entities/Settings";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@domain/entities/WeekSchedule";
 import { parseTimeHHMM, toHHMM, minutesOfDayToLabel } from "@domain/value-objects/TimeOfDay";
 import { normalizeAccentColor } from "@domain/value-objects/AccentColor";
+import { normalizeClockStyle } from "@domain/entities/Settings";
 
 /**
  * Transient settings-shell state. The draft is a deep copy of the committed
@@ -39,6 +42,12 @@ export interface DraftSnapshot {
   savedSwatches: HexColor[];
   /** Clock ring size as a percent of the layout default: 60..130. */
   ringSizeScale: number;
+  /** Home timer look: "ring" or "digital". */
+  clockStyle: ClockStyle;
+  /** Whether the today's-schedule list renders under the home clock. */
+  showScheduleList: boolean;
+  /** Upcoming-lecture lead time in hours; 0 = off. */
+  upcomingAlertHours: number;
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   colorClock: boolean;
@@ -83,6 +92,9 @@ export class SettingsDraftStore {
       homeBgColor: s.homeBgColor,
       savedSwatches: [...s.savedSwatches],
       ringSizeScale: s.ringSizeScale,
+      clockStyle: s.clockStyle,
+      showScheduleList: s.showScheduleList,
+      upcomingAlertHours: s.upcomingAlertHours,
       soundEnabled: s.soundEnabled,
       notificationsEnabled: s.notificationsEnabled,
       colorClock: s.colorClock,
@@ -158,6 +170,8 @@ export class SettingsDraftStore {
     customRingColors: CustomRingColors;
     homeBgColor: HexColor | null;
     ringSizeScale: number;
+    clockStyle: ClockStyle;
+    showScheduleList: boolean;
     colorClock: boolean;
     colorActiveBars: boolean;
     wallpaperBlur: number;
@@ -172,6 +186,8 @@ export class SettingsDraftStore {
       customRingColors: { ...this.draft.customRingColors },
       homeBgColor: this.draft.homeBgColor,
       ringSizeScale: this.draft.ringSizeScale,
+      clockStyle: this.draft.clockStyle,
+      showScheduleList: this.draft.showScheduleList,
       colorClock: this.draft.colorClock,
       colorActiveBars: this.draft.colorActiveBars,
       wallpaperBlur: this.draft.wallpaperBlur,
@@ -222,6 +238,24 @@ export class SettingsDraftStore {
 
   setRingSizeScale(scale: number): void {
     this.draft.ringSizeScale = clampRingSizeScale(scale);
+    this.dirty = true;
+    this.notify();
+  }
+
+  setClockStyle(style: ClockStyle): void {
+    this.draft.clockStyle = normalizeClockStyle(style);
+    this.dirty = true;
+    this.notify();
+  }
+
+  setShowScheduleList(enabled: boolean): void {
+    this.draft.showScheduleList = enabled;
+    this.dirty = true;
+    this.notify();
+  }
+
+  setUpcomingAlertHours(hours: number): void {
+    this.draft.upcomingAlertHours = clampUpcomingAlertHours(hours);
     this.dirty = true;
     this.notify();
   }

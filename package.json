@@ -42,6 +42,9 @@
     "prebuild": "expo prebuild",
     "run:android": "expo run:android"
   },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "private": true,
   "expo": {
     "autolinking": {

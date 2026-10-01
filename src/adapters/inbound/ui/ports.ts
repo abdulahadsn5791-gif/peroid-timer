@@ -43,6 +43,12 @@ export interface SettingsActions {
   /** Records a picked color into the user's saved swatches. */
   saveSwatch(hex: string): void;
   previewAccent(hex: string): void;
+  /** Switches the home timer look between the ring and the digital clock. */
+  previewClockStyle(style: "ring" | "digital"): void;
+  /** Shows/hides the today's-schedule list on the home screen. */
+  previewShowScheduleList(enabled: boolean): void;
+  /** Sets the upcoming-lecture alert lead time in hours (0 = off). */
+  previewUpcomingAlertHours(hours: number): void;
   previewColorClock(enabled: boolean): void;
   previewColorNotification(enabled: boolean): void;
   previewColorActiveBars(enabled: boolean): void;

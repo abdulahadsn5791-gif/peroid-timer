@@ -162,6 +162,8 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       weekday,
       isEmptyDay: today.length === 0,
       ringSizeScale: settings.ringSizeScale,
+      clockStyle: settings.clockStyle,
+      showScheduleList: settings.showScheduleList,
       homeBgColor: overrides ? overrides.homeBgColor : settings.homeBgColor,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
