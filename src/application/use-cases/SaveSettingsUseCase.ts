@@ -45,6 +45,7 @@ export class SaveSettingsUseCase implements SaveSettingsPort {
       ringSizeScale: draft.ringSizeScale,
       clockStyle: draft.clockStyle,
       showScheduleList: draft.showScheduleList,
+      homeGapPx: draft.homeGapPx,
       upcomingAlertHours: draft.upcomingAlertHours,
       colorClock: draft.colorClock,
       colorNotification: draft.colorNotification,

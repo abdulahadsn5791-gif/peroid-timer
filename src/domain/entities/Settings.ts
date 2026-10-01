@@ -51,6 +51,8 @@ export interface Settings {
   clockStyle: ClockStyle;
   /** Whether the today's-schedule list renders under the home clock. */
   showScheduleList: boolean;
+  /** Extra vertical space between the clock and the schedule list, in px (0..120). */
+  homeGapPx: number;
   colorClock: boolean;
   colorNotification: boolean;
   colorActiveBars: boolean;
@@ -83,6 +85,7 @@ export interface SettingsShape {
   ringSizeScale?: number;
   clockStyle?: ClockStyle;
   showScheduleList?: boolean;
+  homeGapPx?: number;
   upcomingAlertHours?: number;
   colorClock?: boolean;
   colorNotification?: boolean;
@@ -119,6 +122,7 @@ export function defaultSettings(): Settings {
     ringSizeScale: DEFAULT_RING_SIZE_SCALE,
     clockStyle: "ring",
     showScheduleList: true,
+    homeGapPx: 0,
     upcomingAlertHours: 0,
     colorClock: false,
     colorNotification: false,
@@ -155,6 +159,7 @@ export function settingsWith(overrides: SettingsShape): Settings {
     ringSizeScale: clampRingSizeScale(overrides.ringSizeScale ?? base.ringSizeScale),
     clockStyle: normalizeClockStyle(overrides.clockStyle ?? base.clockStyle),
     showScheduleList: overrides.showScheduleList ?? base.showScheduleList,
+    homeGapPx: clampHomeGap(overrides.homeGapPx ?? base.homeGapPx),
     upcomingAlertHours: clampUpcomingAlertHours(overrides.upcomingAlertHours ?? base.upcomingAlertHours),
     colorClock: overrides.colorClock ?? base.colorClock,
     colorNotification: overrides.colorNotification ?? base.colorNotification,
@@ -190,6 +195,14 @@ export const UPCOMING_ALERT_MAX_HOURS = 100;
 export function clampUpcomingAlertHours(hours: number): number {
   if (!Number.isFinite(hours)) return 0;
   return Math.max(0, Math.min(UPCOMING_ALERT_MAX_HOURS, Math.round(hours)));
+}
+
+/** Bounds of the home Y-gap slider: extra space between clock and schedule. */
+export const HOME_GAP_MAX_PX = 120;
+
+export function clampHomeGap(px: number): number {
+  if (!Number.isFinite(px)) return 0;
+  return Math.max(0, Math.min(HOME_GAP_MAX_PX, Math.round(px)));
 }
 
 export function normalizeSettings(shape: Partial<SettingsShape> | null | undefined): Settings {

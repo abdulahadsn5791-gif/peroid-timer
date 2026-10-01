@@ -117,6 +117,11 @@ class TimerAlarmReceiver : BroadcastReceiver() {
         val lookup = SnapshotStore.lookup(snapshot, now)
 
         TimerWidgetProvider.requestUpdate(context)
+        // A "start" transition means a lecture just began: take its reminder
+        // down right away instead of letting it linger in the shade.
+        if (lookup.current != null) {
+            UpcomingAlertNotifier.cancelStarted(context, snapshot, now)
+        }
         if (lookup.current != null || lookup.next != null) {
             PeriodTimerSchedulerModule.startForegroundServiceSafe(context)
         }

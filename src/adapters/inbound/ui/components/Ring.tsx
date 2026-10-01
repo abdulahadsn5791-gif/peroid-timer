@@ -21,6 +21,8 @@ interface Props {
   colorActiveBars: boolean;
   /** Base look without a wallpaper; a wallpaper always renders glassy. */
   theme?: ThemeName;
+  /** Dark flat bg rendering liquid glass (no-wallpaper mode). */
+  glassBg?: string | null;
   style?: ViewStyle;
 }
 
@@ -30,13 +32,14 @@ interface Props {
  * rides the arc end, and a centered stack of period-name chip, live clock and
  * status line. Flat fills only — all depth comes from layering and tint.
  */
-export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light", style }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper, theme);
-  // On a photo the blur hides stroke weight, so the band can stay bold; on a
-  // flat canvas the same weight reads bulky — slim it down there.
-  const bandStroke = hasWallpaper ? 8 : 6;
-  const tickStroke = hasWallpaper ? 1.8 : 1.4;
-  const tickMajorStroke = hasWallpaper ? 3 : 2.2;
+export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light", glassBg = null, style }: Props) {
+  const glassy = hasWallpaper || !!glassBg;
+  const adaptive = adaptiveColors(hasWallpaper, theme, glassBg);
+  // On a photo (or liquid glass over a dark bg) the blur hides stroke weight,
+  // so the band can stay bold; on a flat light canvas it reads bulky — slim.
+  const bandStroke = glassy ? 8 : 6;
+  const tickStroke = glassy ? 1.8 : 1.4;
+  const tickMajorStroke = glassy ? 3 : 2.2;
   const chipFont = size * 0.05;
   const timeSize = vm.showHours ? size * 0.15 : size * 0.21;
   const statusSize = size * 0.046;
@@ -94,8 +97,8 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light",
     return els;
   }, [adaptive.ringTick, adaptive.ringTickStrong, vm.ringHex, colorActiveBars, vm.progressElapsed]);
 
-  const chipBg = hexToRgba(vm.ringHex, hasWallpaper ? 0.28 : 0.1);
-  const chipBorder = hasWallpaper ? "rgba(255,255,255,0.30)" : tokens.color.hairlineStrong;
+  const chipBg = hexToRgba(vm.ringHex, glassy ? 0.28 : 0.1);
+  const chipBorder = glassy ? "rgba(255,255,255,0.30)" : tokens.color.hairlineStrong;
 
   return (
     <View style={[{ width: size, height: size, alignSelf: "center" }, style]}>
@@ -118,8 +121,8 @@ export function Ring({ vm, size, hasWallpaper, colorActiveBars, theme = "light",
           strokeDasharray={RING_CIRCUMFERENCE}
           animatedProps={arcProps}
         />
-        <AnimatedCircle r={hasWallpaper ? 8 : 7} fill={vm.ringHex} fillOpacity={0.22} animatedProps={tipProps} />
-        <AnimatedCircle r={hasWallpaper ? 4.5 : 4} fill={vm.ringHex} animatedProps={tipProps} />
+        <AnimatedCircle r={glassy ? 8 : 7} fill={vm.ringHex} fillOpacity={0.22} animatedProps={tipProps} />
+        <AnimatedCircle r={glassy ? 4.5 : 4} fill={vm.ringHex} animatedProps={tipProps} />
       </Svg>
       <View
         style={[

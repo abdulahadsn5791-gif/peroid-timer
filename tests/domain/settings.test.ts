@@ -17,6 +17,7 @@ describe("Settings", () => {
     expect(s.ringSizeScale).toBe(100);
     expect(s.clockStyle).toBe("ring");
     expect(s.showScheduleList).toBe(true);
+    expect(s.homeGapPx).toBe(0);
     expect(s.upcomingAlertHours).toBe(0);
     expect(s.alarmSoundUri).toBeNull();
     expect(s.wallpaperUri).toBeNull();
@@ -66,6 +67,14 @@ describe("Settings", () => {
     expect(settingsWith({ upcomingAlertHours: -3 }).upcomingAlertHours).toBe(0);
     expect(settingsWith({ upcomingAlertHours: 1.6 }).upcomingAlertHours).toBe(2);
     expect(settingsWith({ upcomingAlertHours: NaN }).upcomingAlertHours).toBe(0);
+  });
+
+  test("homeGapPx clamps to 0–120 and rounds", () => {
+    expect(settingsWith({ homeGapPx: 0 }).homeGapPx).toBe(0);
+    expect(settingsWith({ homeGapPx: 48 }).homeGapPx).toBe(48);
+    expect(settingsWith({ homeGapPx: 500 }).homeGapPx).toBe(120);
+    expect(settingsWith({ homeGapPx: -10 }).homeGapPx).toBe(0);
+    expect(settingsWith({ homeGapPx: NaN }).homeGapPx).toBe(0);
   });
 
   test("alarmSoundUri accepts only file/content URIs", () => {

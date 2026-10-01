@@ -342,6 +342,11 @@ export function DragSlider({ value, min, max, accent, accessibilityLabel, onValu
   const span = max - min;
   const fillPct = Math.max(0, Math.min(100, ((value - min) / span) * 100));
   const clampStep = (v: number) => Math.max(min, Math.min(max, v));
+  // Two siblings: the clipped track (fill) and an UNCLIPPED thumb. The old
+  // single-view version put the thumb inside the overflow-hidden track, so at
+  // 0% and 100% the thumb's outer half was clipped — it looked like the thumb
+  // never matched the fill ends. Both use the same fillPct, so the thumb
+  // center and the fill edge always coincide.
   return (
     <View
       ref={trackRef}
@@ -349,7 +354,7 @@ export function DragSlider({ value, min, max, accent, accessibilityLabel, onValu
       onLayout={(e) => {
         widthRef.current = e.nativeEvent.layout.width;
       }}
-      style={[styles.sliderTrack, { backgroundColor: pal.inputBg }]}
+      style={styles.sliderOuter}
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={accessibilityLabel}
@@ -363,7 +368,9 @@ export function DragSlider({ value, min, max, accent, accessibilityLabel, onValu
         else if (e.nativeEvent.actionName === "decrement") onValueChange(clampStep(value - 5));
       }}
     >
-      <View style={[styles.sliderTrackFill, { width: `${fillPct}%`, backgroundColor: accent }]} />
+      <View style={[styles.sliderTrack, { backgroundColor: pal.inputBg }]}>
+        <View style={[styles.sliderTrackFill, { width: `${fillPct}%`, backgroundColor: accent }]} />
+      </View>
       <View style={[styles.sliderThumb, { left: `${fillPct}%` }]} />
     </View>
   );
@@ -876,8 +883,16 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   // Blur slider
-  sliderTrack: {
+  sliderOuter: {
     height: 28,
+    justifyContent: "center",
+  },
+  sliderTrack: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     borderRadius: tokens.radius.full,
     backgroundColor: "rgba(0,0,0,0.06)",
     overflow: "hidden",

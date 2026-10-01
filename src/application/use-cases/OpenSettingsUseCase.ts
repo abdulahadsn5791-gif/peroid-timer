@@ -36,6 +36,7 @@ export function draftVmFromStore(
     ringSizeScale: draft.ringSizeScale,
     clockStyle: draft.clockStyle,
     showScheduleList: draft.showScheduleList,
+    homeGapPx: draft.homeGapPx,
     upcomingAlertHours: draft.upcomingAlertHours,
     soundEnabled: draft.soundEnabled,
     notificationsEnabled: draft.notificationsEnabled,

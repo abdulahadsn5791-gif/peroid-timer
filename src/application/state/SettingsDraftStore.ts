@@ -1,5 +1,6 @@
 import {
   clampBlur,
+  clampHomeGap,
   clampRingSizeScale,
   clampUpcomingAlertHours,
   normalizeSettings,
@@ -46,6 +47,8 @@ export interface DraftSnapshot {
   clockStyle: ClockStyle;
   /** Whether the today's-schedule list renders under the home clock. */
   showScheduleList: boolean;
+  /** Extra vertical space between the clock and the schedule list, in px. */
+  homeGapPx: number;
   /** Upcoming-lecture lead time in hours; 0 = off. */
   upcomingAlertHours: number;
   soundEnabled: boolean;
@@ -94,6 +97,7 @@ export class SettingsDraftStore {
       ringSizeScale: s.ringSizeScale,
       clockStyle: s.clockStyle,
       showScheduleList: s.showScheduleList,
+      homeGapPx: s.homeGapPx,
       upcomingAlertHours: s.upcomingAlertHours,
       soundEnabled: s.soundEnabled,
       notificationsEnabled: s.notificationsEnabled,
@@ -172,6 +176,7 @@ export class SettingsDraftStore {
     ringSizeScale: number;
     clockStyle: ClockStyle;
     showScheduleList: boolean;
+    homeGapPx: number;
     colorClock: boolean;
     colorActiveBars: boolean;
     wallpaperBlur: number;
@@ -188,6 +193,7 @@ export class SettingsDraftStore {
       ringSizeScale: this.draft.ringSizeScale,
       clockStyle: this.draft.clockStyle,
       showScheduleList: this.draft.showScheduleList,
+      homeGapPx: this.draft.homeGapPx,
       colorClock: this.draft.colorClock,
       colorActiveBars: this.draft.colorActiveBars,
       wallpaperBlur: this.draft.wallpaperBlur,
@@ -250,6 +256,12 @@ export class SettingsDraftStore {
 
   setShowScheduleList(enabled: boolean): void {
     this.draft.showScheduleList = enabled;
+    this.dirty = true;
+    this.notify();
+  }
+
+  setHomeGap(px: number): void {
+    this.draft.homeGapPx = clampHomeGap(px);
     this.dirty = true;
     this.notify();
   }

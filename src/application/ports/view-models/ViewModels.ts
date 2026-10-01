@@ -55,6 +55,8 @@ export interface HomeView {
   clockStyle: ClockStyle;
   /** Whether the today's-schedule list renders under the home clock. */
   showScheduleList: boolean;
+  /** Extra vertical space between the clock and the schedule list, in px. */
+  homeGapPx: number;
   wallpaperUri: string | null;
   wallpaperBlur: number;
   /** Home look without a wallpaper; a wallpaper always uses frosted glass. */
@@ -92,6 +94,8 @@ export interface SettingsDraftVM {
   clockStyle: ClockStyle;
   /** Whether the today's-schedule list renders under the home clock. */
   showScheduleList: boolean;
+  /** Extra vertical space between the clock and the schedule list, in px. */
+  homeGapPx: number;
   /** Upcoming-lecture alert lead time in hours; 0 = off. */
   upcomingAlertHours: number;
   soundEnabled: boolean;

@@ -87,8 +87,9 @@ const wallpaperColors = () => ({
  * modes (iOS / One UI): pure black canvas, neutral gray elevated surfaces,
  * and white text with opacity steps instead of tinted grays.
  */
-export const adaptiveColors = (hasWallpaper: boolean, theme: ThemeName = "light") => {
+export const adaptiveColors = (hasWallpaper: boolean, theme: ThemeName = "light", glassBg: string | null = null) => {
   if (hasWallpaper) return wallpaperColors();
+  if (glassBg) return glassOnDarkColors();
   if (theme === "dark") {
     return {
       primary: "#FFFFFF",
@@ -107,11 +108,37 @@ export const adaptiveColors = (hasWallpaper: boolean, theme: ThemeName = "light"
   };
 };
 
-export const panelMaterial = (hasWallpaper: boolean, theme: ThemeName = "light") => {
+/**
+ * Text/glass colors over a user-picked DARK flat background — the "liquid
+ * glass" look wallpapers get, extended to flat colors. Light backgrounds keep
+ * the theme palette (dark glass on a light bg would be unreadable).
+ */
+const glassOnDarkColors = () => ({
+  primary: "rgba(255,255,255,0.97)",
+  secondary: "rgba(255,255,255,0.80)",
+  ringTrack: "rgba(255,255,255,0.28)",
+  ringTick: "rgba(255,255,255,0.40)",
+  ringTickStrong: "rgba(255,255,255,0.65)",
+});
+
+export const panelMaterial = (
+  hasWallpaper: boolean,
+  theme: ThemeName = "light",
+  glassBg: string | null = null,
+) => {
   if (hasWallpaper) {
     return {
       background: "rgba(255,255,255,0.14)",
       borderColor: "rgba(255,255,255,0.22)",
+    };
+  }
+  if (glassBg) {
+    // Lighter fill + brighter border than the wallpaper glass: over a FLAT
+    // color there is no photo detail to suggest depth, so the glass needs a
+    // touch more contrast to read as a material.
+    return {
+      background: "rgba(255,255,255,0.16)",
+      borderColor: "rgba(255,255,255,0.26)",
     };
   }
   if (theme === "dark") {

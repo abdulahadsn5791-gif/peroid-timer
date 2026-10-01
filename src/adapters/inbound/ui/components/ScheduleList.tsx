@@ -16,6 +16,8 @@ interface Props {
   blurTarget?: React.RefObject<RNView | null> | null;
   /** Base look without a wallpaper; a wallpaper always renders glassy. */
   theme?: ThemeName;
+  /** Dark flat bg rendering liquid glass (no-wallpaper mode). */
+  glassBg?: string | null;
 }
 
 /** "Ms. Khan · Room 12" — hides the separator when either part is missing. */
@@ -40,14 +42,15 @@ function RoomIcon({ color }: { color: string }) {
   );
 }
 
-export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget, theme = "light" }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper, theme);
-  const separatorColor = hasWallpaper ? "rgba(0,0,0,0.06)" : theme === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)";
+export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blurTarget, theme = "light", glassBg = null }: Props) {
+  const glassy = hasWallpaper || !!glassBg;
+  const adaptive = adaptiveColors(hasWallpaper, theme, glassBg);
+  const separatorColor = glassy ? "rgba(255,255,255,0.10)" : theme === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)";
   const useBlur = hasWallpaper && !!blurTarget;
   const next = rows.find((row) => row.status === "upcoming");
   const content = [
     <View key="header" style={styles.panelHeader}>
-      <Text style={[styles.panelHeaderTitle, { color: tokens.color.text.tertiary }]}>Today&apos;s schedule</Text>
+      <Text style={[styles.panelHeaderTitle, { color: adaptive.secondary }]}>Today&apos;s schedule</Text>
       {next ? (
         <View style={styles.panelHeaderNext}>
           <View style={[styles.panelHeaderNextDot, { backgroundColor: accentHex }]} />
@@ -64,7 +67,7 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
       return (
         <Fragment key={row.id}>
           {showSeparator ? <View style={[styles.separator, { backgroundColor: separatorColor }]} /> : null}
-          <PeriodRow row={row} accentHex={accentHex} hasWallpaper={hasWallpaper} adaptive={adaptive} theme={theme} />
+          <PeriodRow row={row} accentHex={accentHex} hasWallpaper={hasWallpaper} adaptive={adaptive} theme={theme} glassy={glassy} />
         </Fragment>
       );
     }),
@@ -72,7 +75,9 @@ export function ScheduleList({ rows, accentHex, hasWallpaper, wallpaperBlur, blu
 
   const panelBase = [
     styles.panel,
-    panelMaterial(hasWallpaper, theme),
+    // glassBg MUST flow through: over a dark flat bg the no-glass light
+    // material would paint a solid white panel on the dark home screen.
+    panelMaterial(hasWallpaper, theme, glassBg),
     shadow(1),
     { borderWidth: StyleSheet.hairlineWidth },
   ];
@@ -100,18 +105,20 @@ function PeriodRow({
   hasWallpaper,
   adaptive,
   theme,
+  glassy,
 }: {
   row: ScheduleRowViewModel;
   accentHex: string;
   hasWallpaper: boolean;
   adaptive: ReturnType<typeof adaptiveColors>;
   theme: ThemeName;
+  glassy: boolean;
 }) {
   const meta = metaLabel(row.teacher, row.room);
 
   if (row.status === "passed") {
     return (
-      <View style={styles.row}>
+      <View style={[styles.row, styles.rowRounded]}>
         <View style={[styles.statusCircle, { backgroundColor: hexToRgba(tokens.color.success, 0.12) }]}>
           <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
             <Path d="M20 6L9 17l-5-5" stroke={tokens.color.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
@@ -134,7 +141,9 @@ function PeriodRow({
 
   if (row.status === "current") {
     const tint = hexToRgba(accentHex, 0.1);
-    const pillBg = hexToRgba(row.phaseHex ?? accentHex, hasWallpaper ? 0.3 : 0.14);
+    // On glass (wallpaper or dark flat bg) the countdown pill needs a stronger
+    // fill to separate from the translucent panel; on flat light rows 0.14.
+    const pillBg = hexToRgba(row.phaseHex ?? accentHex, glassy ? 0.3 : 0.14);
     return (
       <View style={[styles.currentRow, { backgroundColor: tint }]}>
         <View style={styles.currentHeader}>
@@ -151,7 +160,7 @@ function PeriodRow({
             </View>
           ) : null}
         </View>
-        <View style={styles.progressTrack}>
+        <View style={[styles.progressTrack, { backgroundColor: glassy ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.10)" }]}>
           <View
             style={[
               styles.progressFill,
@@ -186,7 +195,7 @@ function PeriodRow({
   }
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, styles.rowRounded]}>
       <View style={[styles.statusCircle, { backgroundColor: "transparent", borderWidth: 2, borderColor: adaptive.ringTick }]} />
       <View style={styles.rowTextWrap}>
         <Text numberOfLines={1} style={[styles.rowName, { color: adaptive.primary }]}>
@@ -278,6 +287,12 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.md,
     paddingHorizontal: tokens.spacing.md,
     paddingVertical: tokens.spacing.md,
+    borderRadius: tokens.radius.md,
+  },
+  // The tinted active row's highlight is itself a rounded rect; without a
+  // matching radius on the base rows the highlight corners square off against
+  // neighbors inconsistently depending on which row is active.
+  rowRounded: {
     borderRadius: tokens.radius.md,
   },
   rowTextWrap: {

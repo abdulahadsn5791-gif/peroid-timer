@@ -1,6 +1,7 @@
 package com.periodtimer
 
 import android.app.AlarmManager
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -8,20 +9,31 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 
 /**
- * The "upcoming lecture" heads-up: one silent heads-up notification per
- * lecture, posted leadSec before its start (lead time comes from the snapshot
- * the app writes — 1h, 2h, up to 100h).
+ * The "upcoming lecture" heads-up: one silent notification per lecture,
+ * posted leadSec before its start (lead time comes from the snapshot the app
+ * writes — 1h, 2h, up to 100h).
  *
- * It rides the app's existing silent countdown channel ("period-timer",
- * IMPORTANCE_LOW) so it never buzzes; the loud channel stays reserved for the
- * period-END alarm. It honors the same notificationsEnabled toggle as the
- * end-of-period alert: notifications off means a completely silent day.
+ * It posts on its own IMPORTANCE_LOW channel so it never buzzes; the loud
+ * channel stays reserved for the period-END alarm. It honors the same
+ * notificationsEnabled toggle as the end-of-period alert: notifications off
+ * means a completely silent day.
  *
- * Dedupe is date-scoped like the end alert ("YYYY-MM-DD:periodId") but kept in
- * its own file, so an upcoming alert and an end alert for the same period
+ * Dedupe is date-scoped like the end alert ("YYYY-MM-DD:periodId") but kept
+ * in its own file, so an upcoming alert and an end alert for the same period
  * never suppress each other.
  */
 object UpcomingAlertNotifier {
+    /**
+     * Own IMPORTANCE_LOW channel instead of riding the live-countdown one:
+     * "setOnlyAlertOnce" only suppresses the alert for REPOSTS OF THE SAME
+     * notification id — every new reminder has its own id, so sharing the
+     * countdown channel made each reminder peel off the shade as a new
+     * head-up-style entry and stay there forever ("not following the rule").
+     * On its own silent channel a reminder behaves like a normal heads-up:
+     * it shows briefly, then moves to the shade, and is cancelled outright
+     * once the lecture starts.
+     */
+    const val CHANNEL_ID = "period-timer-upcoming"
     private const val BASE_NOTIFICATION_ID = 3001
 
     fun scheduleAll(context: Context, snapshot: TimelineSnapshot) {
@@ -66,7 +78,7 @@ object UpcomingAlertNotifier {
         SnapshotStore.setLastUpcomingKey(context, key)
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        OngoingNotifier.ensureChannel(context)
+        ensureChannel(context)
         val contentIntent = PendingIntent.getActivity(
             context,
             0,
@@ -75,7 +87,7 @@ object UpcomingAlertNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val until = seg.startUnixSec - now
-        val builder = NotificationCompat.Builder(context, OngoingNotifier.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_clock)
             .setContentTitle("Up next: ${seg.name}")
             .setContentText("Starts at ${seg.startLabel} · in ${format(until.coerceAtLeast(0L))}")
@@ -92,6 +104,35 @@ object UpcomingAlertNotifier {
             .setDefaults(0)
         manager.notify(notificationId(seg.id), builder.build())
         TimerWidgetProvider.requestUpdate(context)
+    }
+
+    /**
+     * Takes down every reminder once its lecture has started. Called from the
+     * transition receiver ("start" alarms) and the foreground service tick —
+     * the two paths that reliably wake at the lecture boundary.
+     */
+    fun cancelStarted(context: Context, snapshot: TimelineSnapshot, now: Long) {
+        if (snapshot.upcomingAlertLeadSec <= 0L) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        for (seg in snapshot.segments) {
+            if (seg.startUnixSec <= now) manager.cancel(notificationId(seg.id))
+        }
+    }
+
+    fun ensureChannel(context: Context) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Upcoming lectures",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Silent heads-up before a scheduled period starts."
+            setSound(null, null)
+            enableVibration(false)
+            setShowBadge(false)
+            lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+        }
+        manager.createNotificationChannel(channel)
     }
 
     private fun notificationId(segId: String): Int =

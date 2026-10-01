@@ -97,13 +97,14 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextName: today[currentIdx + 1]?.name ?? null,
       };
 
-      rows = this.buildRows(today, minutes, paletteWithCustom, (id) =>
-        id === p.id
+      rows = this.buildRows(today, seconds, paletteWithCustom, (rowIndex) =>
+        rowIndex === currentIdx
           ? {
               countdownText: duration.text,
               progressElapsed: 1 - remainingFraction,
               phaseIndex: phase,
               phaseHex: hex,
+              periodId: p.id,
             }
           : null,
       );
@@ -113,6 +114,10 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       const untilStart = Math.max(0, startSec - seconds);
       const prevEndSec =
         nextIdx > 0 ? today[nextIdx - 1].end.minutes * 60 : startSec - 1800;
+      // The span is the full between-gap (prev end → next start). It is
+      // clamped with Math.max for pathological overlapping presets, and the
+      // division is clamped again below — an unclamped negative span would
+      // otherwise flip the fraction sign and, with it, the ring's progress.
       const span = Math.max(60, startSec - prevEndSec);
       const remainingFraction = Math.max(0, Math.min(1, untilStart / span));
       const phaseZero = hex0(paletteWithCustom);
@@ -137,7 +142,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextName: np.name,
       };
 
-      rows = this.buildRows(today, minutes, paletteWithCustom, () => null);
+      rows = this.buildRows(today, seconds, paletteWithCustom, () => null);
     } else {
       ring = {
         periodName: "All periods complete",
@@ -154,7 +159,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
         nextRoom: null,
         nextName: null,
       };
-      rows = this.buildRows(today, minutes, paletteWithCustom, () => null);
+      rows = this.buildRows(today, seconds, paletteWithCustom, () => null);
     }
 
     return {
@@ -164,6 +169,7 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
       ringSizeScale: settings.ringSizeScale,
       clockStyle: settings.clockStyle,
       showScheduleList: settings.showScheduleList,
+      homeGapPx: settings.homeGapPx,
       homeBgColor: overrides ? overrides.homeBgColor : settings.homeBgColor,
       hasWallpaper,
       wallpaperBlur: settings.wallpaperBlur,
@@ -179,21 +185,46 @@ export class GetHomeViewUseCase implements GetHomeViewPort {
 
   private buildRows(
     periods: Period[],
-    nowMinutes: number,
+    nowSec: number,
     palette: RingPalette,
-    currentOverrides: (id: string) => {
+    currentOverrides: (rowIndex: number) => {
       countdownText: string;
       progressElapsed: number;
       phaseIndex: 0 | 1 | 2;
       phaseHex: string;
+      periodId: string;
     } | null,
   ): ScheduleRowViewModel[] {
-    return periods.map((p) => {
+    return periods.map((p, index) => {
+      // Seconds-accurate, matching the ring: minute granularity marked the
+      // row "passed" a whole 59s window before the period actually ended —
+      // while the ring still counted down — so a running lecture showed its
+      // strikethrough + "Done" mark. startMin/endMin names kept for clarity.
       const startMin = p.start.minutes;
       const endMin = p.end.minutes;
+      const startSec = startMin * 60;
+      const endSec = endMin * 60;
       const status: ScheduleRowViewModel["status"] =
-        nowMinutes >= endMin ? "passed" : nowMinutes >= startMin ? "current" : "upcoming";
-      const override = status === "current" ? currentOverrides(p.id) : null;
+        nowSec >= endSec ? "passed" : nowSec >= startSec ? "current" : "upcoming";
+      // The override targets the ring's active period BY ROW INDEX, not by
+      // period id: duplicate period ids in a legacy timetable previously made
+      // the id callback match the wrong row. The periodId carried in the
+      // override is a cross-check only.
+      const override = status === "current" ? currentOverrides(index) : null;
+      if (override != null && override.periodId !== p.id) {
+        return {
+          id: p.id,
+          name: p.name,
+          rangeText: formatRange(p),
+          status,
+          countdownText: null,
+          progressElapsed: 0,
+          phaseIndex: null,
+          phaseHex: null,
+          teacher: p.teacher ?? null,
+          room: p.room ?? null,
+        };
+      }
       return {
         id: p.id,
         name: p.name,

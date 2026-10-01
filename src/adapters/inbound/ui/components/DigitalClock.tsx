@@ -16,6 +16,8 @@ interface Props {
   width: number;
   hasWallpaper: boolean;
   theme?: ThemeName;
+  /** Dark flat bg rendering liquid glass (no-wallpaper mode). */
+  glassBg?: string | null;
 }
 
 /**
@@ -24,8 +26,9 @@ interface Props {
  * of the ring survives in a purely typographic form. Everything scales from
  * the available width, mirroring Ring.tsx's size-driven scaling.
  */
-export function DigitalClock({ vm, width, hasWallpaper, theme = "light" }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper, theme);
+export function DigitalClock({ vm, width, hasWallpaper, theme = "light", glassBg = null }: Props) {
+  const glassy = hasWallpaper || !!glassBg;
+  const adaptive = adaptiveColors(hasWallpaper, theme, glassBg);
   const timeSize = width * 0.22;
   const labelSize = width * 0.055;
   const metaSize = width * 0.042;
@@ -44,12 +47,21 @@ export function DigitalClock({ vm, width, hasWallpaper, theme = "light" }: Props
     opacity: progress.value > 0.001 ? 1 : 0,
   }));
 
-  const chipBg = hexToRgba(vm.ringHex, hasWallpaper ? 0.28 : 0.1);
+  const chipBg = hexToRgba(vm.ringHex, glassy ? 0.28 : 0.1);
 
   return (
     <View style={[styles.wrap, { width: "100%", maxWidth: width }]}>
       {vm.periodName ? (
-        <View style={[styles.chip, { backgroundColor: chipBg, maxWidth: width * 0.8 }]}>
+        <View
+          style={[
+            styles.chip,
+            {
+              backgroundColor: chipBg,
+              borderColor: glassy ? "rgba(255,255,255,0.30)" : tokens.color.hairlineStrong,
+              maxWidth: width * 0.8,
+            },
+          ]}
+        >
           <Text
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -119,7 +131,6 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.30)",
     borderRadius: tokens.radius.full,
     paddingHorizontal: 12,
     paddingVertical: 5,

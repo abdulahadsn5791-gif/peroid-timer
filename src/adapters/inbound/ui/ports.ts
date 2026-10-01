@@ -47,6 +47,8 @@ export interface SettingsActions {
   previewClockStyle(style: "ring" | "digital"): void;
   /** Shows/hides the today's-schedule list on the home screen. */
   previewShowScheduleList(enabled: boolean): void;
+  /** Sets the extra vertical gap between the home clock and the schedule list. */
+  previewHomeGap(px: number): void;
   /** Sets the upcoming-lecture alert lead time in hours (0 = off). */
   previewUpcomingAlertHours(hours: number): void;
   previewColorClock(enabled: boolean): void;

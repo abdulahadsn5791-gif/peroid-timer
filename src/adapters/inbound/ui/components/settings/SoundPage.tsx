@@ -42,7 +42,9 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
           subtitle="A heads-up notification before the next period starts"
         />
         <Card>
-          <View style={styles.toggleStack}>
+          {/* Own padding box: unlike the toggle rows (which carry their own inset),
+            a bare slider would touch the card edges without it. */}
+          <View style={styles.sliderBox}>
             <Text style={styles.sliderLabel}>
               Remind me {draft.upcomingAlertHours === 0 ? "off" : `${draft.upcomingAlertHours}h before`}
             </Text>
@@ -126,6 +128,11 @@ export function SoundPage({ draft, actions, isWide, bottomInset }: Props) {
 const styles = StyleSheet.create({
   toggleStack: {
     paddingVertical: tokens.spacing.xs,
+  },
+  sliderBox: {
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.md,
+    gap: tokens.spacing.xs,
   },
   sliderLabel: {
     fontSize: tokens.text.subtext,

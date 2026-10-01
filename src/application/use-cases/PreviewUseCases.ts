@@ -2,6 +2,7 @@ import type { SettingsDraftVM } from "@application/ports/view-models/ViewModels"
 import type {
   PreviewAccentPort,
   PreviewClockStylePort,
+  PreviewHomeGapPort,
   PreviewColorClockPort,
   PreviewColorNotificationPort,
   PreviewColorActiveBarsPort,
@@ -92,6 +93,15 @@ export class PreviewShowScheduleListUseCase implements PreviewShowScheduleListPo
   constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
   preview(enabled: boolean): SettingsDraftVM {
     this.draftStore.setShowScheduleList(enabled);
+    return vm(this.draftStore, this.wallpaper);
+  }
+}
+
+/** Live-updates the extra vertical gap between the home clock and the schedule list. */
+export class PreviewHomeGapUseCase implements PreviewHomeGapPort {
+  constructor(private readonly draftStore: SettingsDraftStore, private readonly wallpaper: WallpaperStorePort) {}
+  preview(px: number): SettingsDraftVM {
+    this.draftStore.setHomeGap(px);
     return vm(this.draftStore, this.wallpaper);
   }
 }

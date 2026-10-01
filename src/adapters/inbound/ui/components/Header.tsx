@@ -15,12 +15,15 @@ interface Props {
   blurTarget?: React.RefObject<RNView | null> | null;
   /** Base look without a wallpaper; a wallpaper always renders glassy. */
   theme?: ThemeName;
+  /** Dark flat bg color rendering liquid glass (no-wallpaper mode). */
+  glassBg?: string | null;
   onOpenSettings: () => void;
 }
 
-export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blurTarget, theme = "light", onOpenSettings }: Props) {
-  const adaptive = adaptiveColors(hasWallpaper, theme);
-  const material = panelMaterial(hasWallpaper, theme);
+export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blurTarget, theme = "light", glassBg = null, onOpenSettings }: Props) {
+  const glassy = hasWallpaper || !!glassBg;
+  const adaptive = adaptiveColors(hasWallpaper, theme, glassBg);
+  const material = panelMaterial(hasWallpaper, theme, glassBg);
   const useBlur = hasWallpaper && !!blurTarget;
   const insets = useSafeAreaInsets();
   return (
@@ -31,8 +34,8 @@ export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blu
           style={[
             styles.dateChip,
             {
-              backgroundColor: hasWallpaper ? "rgba(255,255,255,0.14)" : material.background,
-              borderColor: hasWallpaper ? "rgba(255,255,255,0.28)" : material.borderColor,
+              backgroundColor: glassy ? "rgba(255,255,255,0.14)" : material.background,
+              borderColor: glassy ? "rgba(255,255,255,0.28)" : material.borderColor,
             },
           ]}
         >
@@ -48,8 +51,8 @@ export function Header({ todayLabel, hasWallpaper, accentHex, wallpaperBlur, blu
         style={[
           styles.gearBtn,
           {
-            borderColor: useBlur ? "rgba(255,255,255,0.30)" : material.borderColor,
-            backgroundColor: useBlur ? "transparent" : material.background,
+            borderColor: useBlur ? "rgba(255,255,255,0.30)" : glassy ? "rgba(255,255,255,0.26)" : material.borderColor,
+            backgroundColor: useBlur ? "transparent" : glassy ? "rgba(255,255,255,0.14)" : material.background,
           },
           useBlur ? styles.gearBlurClip : shadow(0),
         ]}

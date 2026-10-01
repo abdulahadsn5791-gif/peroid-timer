@@ -22,7 +22,8 @@ import {
   WallpaperPreview,
 } from "./primitives";
 import { ColorPicker } from "./ColorPicker";
-import { RING_SIZE_MAX, RING_SIZE_MIN } from "@domain/entities/Settings";
+import { DragSlider } from "./primitives";
+import { HOME_GAP_MAX_PX, RING_SIZE_MAX, RING_SIZE_MIN } from "@domain/entities/Settings";
 import type { HexColor } from "@domain/value-objects/CustomColors";
 
 interface Props {
@@ -145,7 +146,8 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
             />
             <Hint>
               Applies only while no wallpaper photo is set — choosing a photo replaces the flat
-              color. Deep colors like #111827 pair best with the light theme's white cards.
+              color. Dark colors render the frosted liquid-glass look; light colors keep the flat
+              theme style.
             </Hint>
           </ExpandableRow>
         </Card>
@@ -259,7 +261,7 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
 
         <SectionHeader
           title="Home layout"
-          subtitle="What renders below the clock"
+          subtitle="What renders below the clock, and how far apart"
         />
         <Card>
           <View style={styles.toggleStack}>
@@ -269,8 +271,23 @@ export function LookPage({ draft, actions, isWide, bottomInset }: Props) {
               value={draft.showScheduleList}
               accent={accent}
               onChange={(v) => actions.previewShowScheduleList(v)}
-              last
             />
+            <View style={styles.gapBox} pointerEvents={draft.showScheduleList ? "auto" : "none"}>
+              <Text style={styles.sliderLabel}>
+                Clock ↔ schedule gap {draft.homeGapPx === 0 ? "(default)" : `${draft.homeGapPx}px`}
+              </Text>
+              <DragSlider
+                value={draft.homeGapPx}
+                min={0}
+                max={HOME_GAP_MAX_PX}
+                accent={accent}
+                accessibilityLabel="Vertical gap between clock and schedule"
+                onValueChange={(v) => actions.previewHomeGap(v)}
+              />
+              <Text style={styles.sliderHint}>
+                Extra vertical space between the timer and the schedule list.
+              </Text>
+            </View>
           </View>
         </Card>
         <Hint>Hide the list and the home screen becomes just the clock ring (or digital clock).</Hint>
@@ -372,6 +389,7 @@ const styles = StyleSheet.create({
     color: tokens.color.text.primary,
   },
   btnFlex: { flex: 1 },
+  gapBox: { paddingHorizontal: tokens.spacing.lg, paddingVertical: tokens.spacing.sm, gap: tokens.spacing.xs },
   looseCard: { padding: tokens.spacing.md },
   swatchRow: {
     flexDirection: "row",

@@ -101,10 +101,21 @@ class PeriodForegroundService : Service() {
         // Before the self-stop check: this tick can be the one that sees the
         // last period of the day end, and that end still has to ring.
         ringIfPeriodJustEnded(snapshot, lookup, now)
+        // A lecture just started on this tick: take its reminder down. (The
+        // exact-alarm path cancels via TimerAlarmReceiver; this covers devices
+        // where exact alarms are unavailable or the alarm was throttled.)
+        if (lookup.current != null) {
+            UpcomingAlertNotifier.cancelStarted(this, snapshot, now)
+        }
         if (lookup.current == null && lookup.next == null) {
             stopSelfAndClear()
             return
         }
+        // The live notification republishes here anyway; piggyback the widget
+        // refresh so its countdown never drifts more than ~5s while this
+        // service is alive — the widget previously only updated at transition
+        // alarms, so it showed old data until the app was opened.
+        TimerWidgetProvider.requestUpdate(this)
         startForegroundTyped(OngoingNotifier.compose(this, snapshot, lookup))
     }
 

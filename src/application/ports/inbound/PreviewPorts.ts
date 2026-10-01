@@ -41,6 +41,11 @@ export interface PreviewShowScheduleListPort {
   preview(enabled: boolean): SettingsDraftVM;
 }
 
+/** Sets the extra vertical gap between the home clock and the schedule list. */
+export interface PreviewHomeGapPort {
+  preview(px: number): SettingsDraftVM;
+}
+
 /** Sets the upcoming-lecture alert lead time in hours (0 = off). */
 export interface PreviewUpcomingAlertHoursPort {
   preview(hours: number): SettingsDraftVM;

@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { BlurTargetView, BlurView } from "expo-blur";
 import { tokens, adaptiveColors, panelMaterial } from "../design-system/tokens";
+import { isDarkColor } from "../utils/color";
 import { Header } from "../components/Header";
 import { Ring, ringSizeFor } from "../components/Ring";
 import { DigitalClock } from "../components/DigitalClock";
@@ -38,6 +39,12 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
   const sceneBlur = useRef<RNView | null>(null);
 
   const sheetOpen = isOpen && !!draft;
+
+  // Liquid glass over a user-picked DARK flat background (no-wallpaper mode):
+  // same frosted material wallpapers get. Light colors keep the theme look —
+  // dark glass on a light bg would be unreadable.
+  const glassBg = !view.hasWallpaper && view.homeBgColor && isDarkColor(view.homeBgColor) ? view.homeBgColor : null;
+  const glassy = view.hasWallpaper || !!glassBg;
 
   // The user-scaled ring: ringSizeFor gives the layout default, the scale
   // (60–130%) is the Settings slider value. Kept in the same useMemo so the
@@ -79,7 +86,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
         },
       ]}
     >
-      <StatusBar hidden style={view.hasWallpaper || view.theme === "dark" ? "light" : "dark"} />
+      <StatusBar hidden style={glassy || view.theme === "dark" ? "light" : "dark"} />
 
       <BlurTargetView ref={sceneBlur} style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {view.hasWallpaper && view.wallpaperUri ? (
@@ -107,7 +114,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <Header todayLabel={view.todayLabel} hasWallpaper={view.hasWallpaper} accentHex={view.accentHex} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} onOpenSettings={open} />
+          <Header todayLabel={view.todayLabel} hasWallpaper={view.hasWallpaper} accentHex={view.accentHex} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} glassBg={glassBg} onOpenSettings={open} />
 
           <View style={isWide ? styles.widePane : styles.narrowPane}>
             <Animated.View style={[styles.ringSlot, zoom, isWide && styles.wideRingSlot]}>
@@ -117,20 +124,21 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
                   width={isWide ? Math.min(width * 0.45, 480) : width - tokens.spacing.xl * 2}
                   hasWallpaper={view.hasWallpaper}
                   theme={view.theme}
+                  glassBg={glassBg}
                 />
               ) : (
-                <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} theme={view.theme} />
+                <Ring vm={view.ring} size={ringSize} hasWallpaper={view.hasWallpaper} colorActiveBars={view.colorActiveBars} theme={view.theme} glassBg={glassBg} />
               )}
             </Animated.View>
             {isWide && view.showScheduleList ? (
-              <View style={{ flex: 1, paddingTop: 8 }}>
-                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} />
+              <View style={{ flex: 1, paddingTop: 8 + view.homeGapPx }}>
+                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} glassBg={glassBg} />
               </View>
             ) : null}
           </View>
 
           {!isWide && view.showScheduleList ? (
-            <View style={styles.narrowListWrap}>
+            <View style={[styles.narrowListWrap, { marginTop: tokens.spacing.xl + view.homeGapPx }]}>
               {view.isEmptyDay ? (
                 <View
                   style={[
@@ -142,7 +150,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
                   <Text
                     style={[
                       styles.emptyDayTitle,
-                      { color: adaptiveColors(view.hasWallpaper, view.theme).primary },
+                      { color: adaptiveColors(view.hasWallpaper, view.theme, glassBg).primary },
                     ]}
                   >
                     No lectures today
@@ -150,7 +158,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
                   <Text
                     style={[
                       styles.emptyDaySub,
-                      { color: adaptiveColors(view.hasWallpaper, view.theme).secondary },
+                      { color: adaptiveColors(view.hasWallpaper, view.theme, glassBg).secondary },
                     ]}
                   >
                     This weekday's preset is empty — alarms and notifications are off. Add periods in
@@ -158,7 +166,7 @@ export function HomeScreen({ deps }: { deps: AppDeps }) {
                   </Text>
                 </View>
               ) : (
-                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} />
+                <ScheduleList rows={view.rows} accentHex={view.accentHex} hasWallpaper={view.hasWallpaper} wallpaperBlur={view.wallpaperBlur} blurTarget={wallpaperBlur} theme={view.theme} glassBg={glassBg} />
               )}
             </View>
           ) : null}
